@@ -1,7 +1,6 @@
 import boxen from 'boxen';
 import chalk from 'chalk';
-
-const version = '0.0.1';
+import { version } from '../../package.json';
 
 /**
  * Displays the Xpander CLI banner

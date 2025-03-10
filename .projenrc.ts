@@ -1,5 +1,4 @@
-import { javascript, typescript } from 'projen';
-import { NpmAccess } from 'projen/lib/javascript/node-package';
+import { typescript } from 'projen';
 
 const project = new typescript.TypeScriptProject({
   name: 'xpander-cli',
@@ -15,8 +14,10 @@ const project = new typescript.TypeScriptProject({
 
   release: true,
   releaseToNpm: true,
-  npmAccess: NpmAccess.PUBLIC,
-  npmRegistryUrl: 'https://registry.npmjs.org',
+
+  // Set version explicitly
+  minNodeVersion: '16.13.0',
+  workflowNodeVersion: '16.x',
 
   // Binary entry point for the CLI
   bin: {
@@ -65,5 +66,8 @@ const project = new typescript.TypeScriptProject({
     'ts-node',
   ],
 });
+
+project.package.addField('version', '0.0.1');
+
 // Synth the project
 project.synth();

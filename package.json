@@ -67,12 +67,15 @@
     "ora": "^5.4.1",
     "yargs": "^17.7.2"
   },
+  "engines": {
+    "node": ">= 16.13.0"
+  },
   "main": "lib/index.js",
   "license": "Apache-2.0",
   "publishConfig": {
     "access": "public"
   },
-  "version": "0.0.0",
+  "version": "0.0.1",
   "jest": {
     "coverageProvider": "v8",
     "testMatch": [

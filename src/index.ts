@@ -4,6 +4,7 @@ import chalk from 'chalk';
 import { Command } from 'commander';
 import inquirer from 'inquirer';
 
+import { version } from '../package.json';
 import { agent } from './commands/agent';
 import { configureConfigureCommand } from './commands/configure';
 import { displayBanner } from './utils/banner';
@@ -16,8 +17,7 @@ import {
   setPreferredFormat,
 } from './utils/config';
 
-// Use a hardcoded version instead of importing from package.json
-const version = '0.0.1';
+// Read the version from package.json instead of hardcoding it
 
 async function isLoggedIn(): Promise<boolean> {
   const apiKey = getApiKey();
@@ -46,16 +46,12 @@ async function promptLogin() {
     const tempProgram = new Command();
     configureConfigureCommand(tempProgram);
 
-    // Find the configure command and execute it
+    // Find the configure command and execute it without passing any arguments
     const configureCmd = tempProgram.commands.find(
       (cmd) => cmd.name() === 'configure',
     );
     if (configureCmd) {
-      await configureCmd.parseAsync([
-        process.argv[0],
-        process.argv[1],
-        'configure',
-      ]);
+      await configureCmd.parseAsync([], { from: 'user' });
     }
   } else {
     console.log(
