@@ -99,7 +99,9 @@ export class XpanderClient {
    */
   private saveExtractedOrgId(): void {
     if (this.orgId) {
-      console.log(`Extracted organization ID: ${this.orgId}`);
+      // Only log this if verbose logging is enabled
+      // For now we'll disable it completely to avoid confusing users
+      // console.log(`Extracted organization ID: ${this.orgId}`);
       setOrganizationId(this.orgId, this.currentProfile);
     }
   }
@@ -132,6 +134,7 @@ export class XpanderClient {
   async getAgents(): Promise<Agent[]> {
     try {
       console.log(`Fetching agents...`);
+      // Only log the organization ID if it's already known, don't emphasize it's missing
       if (this.orgId) {
         console.log(`Fetching agents for organization: ${this.orgId}`);
       }

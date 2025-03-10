@@ -23,7 +23,7 @@ export function configureConfigureCommand(program: Command): void {
     .option('--key <api_key>', 'Your Xpander API key')
     .option(
       '--org <organization_id>',
-      'Your Xpander organization ID (optional)',
+      'Your Xpander organization ID (optional, auto-detected if omitted)',
     )
     .option('--profile <profile>', 'Profile name to use')
     .option('--no-validate', 'Skip credential validation')
@@ -58,7 +58,7 @@ export function configureConfigureCommand(program: Command): void {
       }
 
       // Validate API key if requested
-      let organizationId = options.org;
+      let organizationId = options.org; // Only use if explicitly provided
       if (shouldValidate) {
         const spinner = ora('Validating API key...').start();
 
@@ -92,37 +92,7 @@ export function configureConfigureCommand(program: Command): void {
         );
       }
 
-      // Get organization ID if provided via CLI option
-      // Otherwise, make it optional and allow users to skip it
-      if (!organizationId) {
-        const answers = await inquirer.prompt([
-          {
-            type: 'confirm',
-            name: 'setOrgId',
-            message:
-              'Do you want to specify an organization ID? (Advanced users)',
-            default: false,
-          },
-        ]);
-
-        if (answers.setOrgId) {
-          const orgAnswer = await inquirer.prompt([
-            {
-              type: 'input',
-              name: 'orgId',
-              message: 'Enter your Xpander organization ID:',
-              validate: (input) => {
-                if (!input)
-                  return 'Please provide an organization ID or cancel';
-                return true;
-              },
-            },
-          ]);
-          organizationId = orgAnswer.orgId;
-        }
-      }
-
-      // Save the configuration
+      // Save the configuration with whatever we have
       createProfile(profileName, apiKey, organizationId);
 
       // Provide feedback
@@ -132,7 +102,7 @@ export function configureConfigureCommand(program: Command): void {
       } else {
         console.log(
           chalk.blue(
-            'No organization ID was provided. The CLI will attempt to determine the organization automatically.',
+            'Organization ID will be auto-detected the first time you use the CLI.',
           ),
         );
       }
