@@ -1,4 +1,5 @@
-import { typescript } from 'projen';
+import { javascript, typescript } from 'projen';
+import { NpmAccess } from 'projen/lib/javascript/node-package';
 
 const project = new typescript.TypeScriptProject({
   name: 'xpander-cli',
@@ -14,6 +15,8 @@ const project = new typescript.TypeScriptProject({
 
   release: true,
   releaseToNpm: true,
+  npmAccess: NpmAccess.PUBLIC,
+  npmRegistryUrl: 'https://registry.npmjs.org',
 
   // Binary entry point for the CLI
   bin: {
