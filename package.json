@@ -1,5 +1,5 @@
 {
-  "name": "@xpander-ai/cli",
+  "name": "xpander-cli",
   "description": "Command Line Interface for Xpander",
   "repository": {
     "type": "git",
