@@ -28,7 +28,7 @@ async function isLoggedIn(): Promise<boolean> {
 
 async function promptLogin() {
   console.log(
-    chalk.yellow('You need to configure profile to use the Xpander CLI.')
+    chalk.yellow('You need to configure profile to use the Xpander CLI.'),
   );
 
   const shouldLogin = await inquirer.prompt([
@@ -47,7 +47,7 @@ async function promptLogin() {
 
     // Find the configure command and execute it without passing any arguments
     const configureCmd = tempProgram.commands.find(
-      (cmd) => cmd.name() === 'configure'
+      (cmd) => cmd.name() === 'configure',
     );
     if (configureCmd) {
       await configureCmd.parseAsync([], { from: 'user' });
@@ -55,8 +55,8 @@ async function promptLogin() {
   } else {
     console.log(
       chalk.blue(
-        'You can configure the profile later by running: xpander configure'
-      )
+        'You can configure the profile later by running: xpander configure',
+      ),
     );
     process.exit(0);
   }
@@ -76,7 +76,7 @@ async function showProfileInfo() {
     console.log(chalk.yellow('Organization ID:'));
     console.log(chalk.yellow('  Not set - required for most operations'));
     console.log(
-      chalk.yellow('  Run "xpander configure --org YOUR_ORG_ID" to set it')
+      chalk.yellow('  Run "xpander configure --org YOUR_ORG_ID" to set it'),
     );
   }
 
@@ -86,8 +86,8 @@ async function showProfileInfo() {
     console.log('');
     console.log(
       chalk.gray(
-        `You have ${profiles.length} profiles available. Use 'xpander profile --switch <n>' to switch profiles.`
-      )
+        `You have ${profiles.length} profiles available. Use 'xpander profile --switch <n>' to switch profiles.`,
+      ),
     );
   }
 }
@@ -158,8 +158,8 @@ async function main() {
         } else {
           console.warn(
             chalk.yellow(
-              `Warning: Unsupported format '${format}'. Using 'table' instead.`
-            )
+              `Warning: Unsupported format '${format}'. Using 'table' instead.`,
+            ),
           );
           setPreferredFormat('table');
         }

@@ -34,7 +34,7 @@ function isValidOrgIdFormat(orgId: string): boolean {
 // Function to validate the API key and organization ID pair against the API
 async function validateCredentialPair(
   apiKey: string,
-  orgId: string
+  orgId: string,
 ): Promise<ValidationResult> {
   try {
     // Create a test API client
@@ -134,12 +134,12 @@ export function configureLoginCommand(program: Command): void {
           setApiKey(apiKey, profileName);
 
           console.log(
-            chalk.green(`API key saved to profile "${profileName}".`)
+            chalk.green(`API key saved to profile "${profileName}".`),
           );
           console.log(
             chalk.green(
-              `Successfully logged in using profile "${profileName}".`
-            )
+              `Successfully logged in using profile "${profileName}".`,
+            ),
           );
 
           // Prompt for organization ID
@@ -154,14 +154,14 @@ export function configureLoginCommand(program: Command): void {
           if (orgAnswers.orgId) {
             setOrganizationId(orgAnswers.orgId, profileName);
             console.log(
-              chalk.green(`Organization ID saved to profile "${profileName}".`)
+              chalk.green(`Organization ID saved to profile "${profileName}".`),
             );
           } else {
             console.log(chalk.yellow('No organization ID provided.'));
             console.log(
               chalk.yellow(
-                'You may need to set it later for certain operations.'
-              )
+                'You may need to set it later for certain operations.',
+              ),
             );
           }
         } else {
@@ -187,11 +187,11 @@ export function configureCommand(program: Command): void {
     .option('-k, --key <key>', 'API key for authentication')
     .option(
       '-p, --profile <profileName>',
-      'Profile name to use (default: "default")'
+      'Profile name to use (default: "default")',
     )
     .option(
       '-o, --org <organizationId>',
-      'Set your organization ID explicitly (required)'
+      'Set your organization ID explicitly (required)',
     )
     .option('--no-validate', 'Skip API key validation')
     .action(async (options) => {
@@ -203,10 +203,14 @@ export function configureCommand(program: Command): void {
       // If no API key is provided, prompt the user
       if (!apiKey) {
         console.log(
-          chalk.blue('Your API key is required to authenticate with Xpander.ai')
+          chalk.blue(
+            'Your API key is required to authenticate with Xpander.ai',
+          ),
         );
         console.log(
-          chalk.gray('(You can find your API key in your Xpander.ai dashboard)')
+          chalk.gray(
+            '(You can find your API key in your Xpander.ai dashboard)',
+          ),
         );
 
         const answers = await inquirer.prompt([
@@ -231,8 +235,8 @@ export function configureCommand(program: Command): void {
         // If API key was provided via command line, validate it
         console.error(
           chalk.red(
-            'Invalid API key format. API keys should be at least 20 characters long.'
-          )
+            'Invalid API key format. API keys should be at least 20 characters long.',
+          ),
         );
         process.exit(1);
       }
@@ -241,13 +245,13 @@ export function configureCommand(program: Command): void {
       if (!organizationId) {
         console.log(
           chalk.blue(
-            'Your organization ID is required for Xpander.ai API operations'
-          )
+            'Your organization ID is required for Xpander.ai API operations',
+          ),
         );
         console.log(
           chalk.gray(
-            '(You can find your organization ID in your Xpander.ai dashboard)'
-          )
+            '(You can find your organization ID in your Xpander.ai dashboard)',
+          ),
         );
 
         const orgAnswers = await inquirer.prompt([
@@ -272,8 +276,8 @@ export function configureCommand(program: Command): void {
         // If org ID was provided via command line, validate it
         console.error(
           chalk.red(
-            'Invalid organization ID format. Organization IDs should be at least 3 characters long.'
-          )
+            'Invalid organization ID format. Organization IDs should be at least 3 characters long.',
+          ),
         );
         process.exit(1);
       }
@@ -287,7 +291,7 @@ export function configureCommand(program: Command): void {
 
         if (!validationResult.isValid) {
           console.error(
-            chalk.red(`✗ Validation failed: ${validationResult.message}`)
+            chalk.red(`✗ Validation failed: ${validationResult.message}`),
           );
           process.exit(1);
         }
@@ -299,12 +303,12 @@ export function configureCommand(program: Command): void {
         }
       } else {
         console.log(
-          chalk.yellow('Skipping credential validation (--no-validate)')
+          chalk.yellow('Skipping credential validation (--no-validate)'),
         );
         console.log(
           chalk.yellow(
-            'Note: Invalid credentials may cause API operations to fail'
-          )
+            'Note: Invalid credentials may cause API operations to fail',
+          ),
         );
       }
 
@@ -315,16 +319,16 @@ export function configureCommand(program: Command): void {
       setOrganizationId(organizationId, profileName);
       console.log(
         chalk.green(
-          `✓ Organization ID saved to profile "${profileName}": ${organizationId}`
-        )
+          `✓ Organization ID saved to profile "${profileName}": ${organizationId}`,
+        ),
       );
 
       // Set as current profile
       setCurrentProfile(profileName);
       console.log(
         chalk.green(
-          `✓ Successfully configured Xpander CLI using profile "${profileName}"`
-        )
+          `✓ Successfully configured Xpander CLI using profile "${profileName}"`,
+        ),
       );
     });
 
@@ -348,7 +352,7 @@ export function configureCommand(program: Command): void {
         for (const profile of profiles) {
           if (profile === currentProfile) {
             console.log(
-              `${chalk.green('✓')} ${profile} ${chalk.gray('(current)')}`
+              `${chalk.green('✓')} ${profile} ${chalk.gray('(current)')}`,
             );
           } else {
             console.log(`  ${profile}`);
@@ -363,15 +367,15 @@ export function configureCommand(program: Command): void {
         const orgId = getOrganizationId();
 
         console.log(
-          chalk.blue(`Current profile: ${chalk.bold(currentProfile)}`)
+          chalk.blue(`Current profile: ${chalk.bold(currentProfile)}`),
         );
         if (orgId) {
           console.log(chalk.blue(`Organization ID: ${chalk.bold(orgId)}`));
         } else {
           console.log(
             chalk.gray(
-              "No organization ID set. We'll try to detect it automatically."
-            )
+              "No organization ID set. We'll try to detect it automatically.",
+            ),
           );
         }
         return;
@@ -385,8 +389,8 @@ export function configureCommand(program: Command): void {
             chalk.red(
               `Profile "${
                 options.switch
-              }" not found. Available profiles: ${profiles.join(', ')}`
-            )
+              }" not found. Available profiles: ${profiles.join(', ')}`,
+            ),
           );
           process.exit(1);
         }
@@ -400,8 +404,8 @@ export function configureCommand(program: Command): void {
         } else {
           console.log(
             chalk.gray(
-              "No organization ID set for this profile. We'll try to detect it automatically."
-            )
+              "No organization ID set for this profile. We'll try to detect it automatically.",
+            ),
           );
         }
         return;
@@ -471,7 +475,7 @@ export function configureCommand(program: Command): void {
           console.log(chalk.green(`✓ Created new profile "${options.new}"`));
           if (organizationId) {
             console.log(
-              chalk.blue(`Organization ID: ${chalk.bold(organizationId)}`)
+              chalk.blue(`Organization ID: ${chalk.bold(organizationId)}`),
             );
           }
         } catch (error) {
@@ -479,8 +483,8 @@ export function configureCommand(program: Command): void {
             chalk.red(
               `Error creating profile: ${
                 error instanceof Error ? error.message : error
-              }`
-            )
+              }`,
+            ),
           );
           process.exit(1);
         }
@@ -490,19 +494,19 @@ export function configureCommand(program: Command): void {
       // If no options provided, show help
       if (
         !Object.keys(options).some((key) =>
-          ['list', 'current', 'switch', 'new'].includes(key)
+          ['list', 'current', 'switch', 'new'].includes(key),
         )
       ) {
         console.log(chalk.blue('Profile management commands:'));
         console.log('  xpander profile --list              List all profiles');
         console.log(
-          '  xpander profile --current           Show current profile'
+          '  xpander profile --current           Show current profile',
         );
         console.log(
-          '  xpander profile --switch <name>     Switch to a different profile'
+          '  xpander profile --switch <name>     Switch to a different profile',
         );
         console.log(
-          '  xpander profile --new <name>        Create a new profile'
+          '  xpander profile --new <name>        Create a new profile',
         );
       }
     });

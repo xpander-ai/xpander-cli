@@ -68,15 +68,15 @@ export function configureConfigureCommand(program: Command): void {
             spinner.succeed('API key validation successful');
           } else {
             spinner.warn(
-              'API key validation failed, but configuration will continue'
+              'API key validation failed, but configuration will continue',
             );
             console.log(
-              chalk.yellow('You may encounter errors when using this API key.')
+              chalk.yellow('You may encounter errors when using this API key.'),
             );
           }
         } catch (error: any) {
           spinner.warn(
-            'API key validation failed, but configuration will continue'
+            'API key validation failed, but configuration will continue',
           );
           console.log(chalk.yellow('Error during validation:'), error.message);
         }
@@ -84,8 +84,8 @@ export function configureConfigureCommand(program: Command): void {
         console.log(chalk.yellow('Skipping credential validation.'));
         console.log(
           chalk.yellow(
-            'Warning: Invalid credentials may cause API operations to fail.'
-          )
+            'Warning: Invalid credentials may cause API operations to fail.',
+          ),
         );
       }
 
@@ -110,10 +110,10 @@ export function configureConfigureCommand(program: Command): void {
 
       console.log(chalk.green(`API key saved to profile "${profileName}".`));
       console.log(
-        chalk.green(`Organization ID saved to profile "${profileName}".`)
+        chalk.green(`Organization ID saved to profile "${profileName}".`),
       );
       console.log(
-        chalk.green(`Successfully configured using profile "${profileName}".`)
+        chalk.green(`Successfully configured using profile "${profileName}".`),
       );
     });
 
@@ -132,7 +132,7 @@ export function configureConfigureCommand(program: Command): void {
         profiles.forEach((profile: string) => {
           if (profile === currentProfile) {
             console.log(
-              `  ${chalk.green('*')} ${profile} ${chalk.green('(current)')}`
+              `  ${chalk.green('*')} ${profile} ${chalk.green('(current)')}`,
             );
           } else {
             console.log(`    ${profile}`);
