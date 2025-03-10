@@ -1,3 +1,5 @@
+import * as os from 'os';
+import * as path from 'path';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import inquirer from 'inquirer';
@@ -95,7 +97,10 @@ export function configureConfigureCommand(program: Command): void {
       // Save the configuration with whatever we have
       createProfile(profileName, apiKey, organizationId);
 
-      // Provide feedback
+      // Get the credential file path for informational purposes
+      const credsFilePath = path.join(os.homedir(), '.xpander', 'credentials');
+
+      // Provide enhanced feedback
       console.log(`API key saved to profile "${profileName}".`);
       if (organizationId) {
         console.log(`Organization ID saved to profile "${profileName}".`);
@@ -105,8 +110,27 @@ export function configureConfigureCommand(program: Command): void {
             'Organization ID will be auto-detected the first time you use the CLI.',
           ),
         );
+        console.log(
+          chalk.blue(
+            'Run "xpander agent list" to automatically detect and save your organization ID.',
+          ),
+        );
       }
-      console.log(`Successfully configured using profile "${profileName}".`);
+
+      // Print information about credentials storage and profiles
+      console.log(`\nCredentials stored at: ${chalk.cyan(credsFilePath)}`);
+      console.log(`Current profile: ${chalk.green(profileName)}`);
+      console.log(
+        `\nYou can use different profiles by adding ${chalk.cyan('--profile <name>')} to any command.`,
+      );
+      console.log(
+        `Example: ${chalk.green('xpander agent list --profile work')}`,
+      );
+      console.log(
+        `You can also switch profiles with: ${chalk.green('xpander profile --switch <name>')}`,
+      );
+
+      console.log(`\nSuccessfully configured using profile "${profileName}".`);
     });
 
   program

@@ -99,9 +99,15 @@ export class XpanderClient {
    */
   private saveExtractedOrgId(): void {
     if (this.orgId) {
-      // Only log this if verbose logging is enabled
-      // For now we'll disable it completely to avoid confusing users
-      // console.log(`Extracted organization ID: ${this.orgId}`);
+      // Provide clear feedback when organization ID is extracted and saved
+      console.log(chalk.green(`Organization ID detected: ${this.orgId}`));
+      console.log(
+        chalk.green(
+          `Organization ID saved to profile "${this.currentProfile || 'default'}".`,
+        ),
+      );
+
+      // Save the organization ID to the profile
       setOrganizationId(this.orgId, this.currentProfile);
     }
   }

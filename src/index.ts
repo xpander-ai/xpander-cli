@@ -124,7 +124,10 @@ async function main() {
         console.log('  xpander profile        - Manage your profiles');
         console.log('  xpander --help         - Show all available commands');
         console.log('');
-        process.exit(0);
+
+        // Rather than exiting, we'll continue to process the rest of the CLI initialization
+        // This allows the user to continue using the CLI after login
+        // process.exit(0);
       }
     } else if (!hasArgs) {
       // If logged in and no args, show welcome message, profile info, and available commands
