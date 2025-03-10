@@ -16,6 +16,10 @@ export function agent(program: Command): void {
     .command('list')
     .description('List all agents')
     .option('--output <format>', 'Output format (json, table)')
+    .option(
+      '--filter-id <id>',
+      'Filter agents by ID (supports partial matches)'
+    )
     .action(async (cmdOptions) => {
       try {
         const client = createClient();
@@ -28,8 +32,27 @@ export function agent(program: Command): void {
           return;
         }
 
+        // Filter agents by ID if filter-id option is provided
+        let filteredAgents = agents;
+        if (cmdOptions.filterId) {
+          filteredAgents = agents.filter((agentItem) =>
+            agentItem.id
+              .toLowerCase()
+              .includes(cmdOptions.filterId.toLowerCase())
+          );
+
+          if (filteredAgents.length === 0) {
+            console.log(
+              chalk.yellow(
+                `No agents found with ID matching "${cmdOptions.filterId}"`
+              )
+            );
+            return;
+          }
+        }
+
         // Prepare agents data with formatted fields for better display
-        const formattedAgents = agents.map((agentItem) => {
+        const formattedAgents = filteredAgents.map((agentItem) => {
           // Format the date properly
           let createdDate = '';
           try {
@@ -41,48 +64,66 @@ export function agent(program: Command): void {
 
           // Process data for better table display
           return {
-            id: agentItem.id.substring(0, 8) + '...', // Show shorter ID for better readability
+            id: agentItem.id, // Show full ID as requested
             name: agentItem.name,
-            description: agentItem.description
-              ? agentItem.description.substring(0, 30) +
-                (agentItem.description.length > 30 ? '...' : '')
-              : '',
-            status: agentItem.status,
-            type: agentItem.type || '',
             model: agentItem.model_name || '',
-            created_at: createdDate,
             tools_count: agentItem.tools ? agentItem.tools.length : 0,
-            is_ai_employee: agentItem.is_ai_employee ? 'Yes' : 'No',
+            created_at: createdDate,
           };
         });
 
-        // Format and display agents
-        formatOutput(cmdOptions.output === 'json' ? agents : formattedAgents, {
-          title: 'Your Agents',
-          columns: [
-            'id',
-            'name',
-            'description',
-            'status',
-            'type',
-            'model',
-            'created_at',
-            'tools_count',
-            'is_ai_employee',
-          ],
-          headers: [
-            'ID',
-            'Name',
-            'Description',
-            'Status',
-            'Type',
-            'Model',
-            'Created',
-            'Tools',
-            'AI Employee',
-          ],
-          format: cmdOptions.output, // Pass the output format option
-        });
+        if (cmdOptions.output === 'json') {
+          // For JSON output, return all raw data without filtering
+          console.log(JSON.stringify(filteredAgents, null, 2));
+        } else {
+          // For table output, use the formatted data with specific columns
+          formatOutput(formattedAgents, {
+            title:
+              filteredAgents.length === 1 ? 'Agent Details' : 'Your Agents',
+            columns: ['id', 'name', 'model', 'tools_count', 'created_at'],
+            headers: ['ID', 'Name', 'Model', 'Tools', 'Created'],
+          });
+        }
+      } catch (error: any) {
+        console.error(chalk.red('Error:'), error.message);
+      }
+    });
+
+  // Add a dedicated command for JSON output that returns raw data
+  agentCommand
+    .command('list-json')
+    .description('List all agents in raw JSON format')
+    .option(
+      '--filter-id <id>',
+      'Filter agents by ID (supports partial matches)'
+    )
+    .action(async (cmdOptions) => {
+      try {
+        const client = createClient();
+        const agents = await client.getAgents();
+
+        if (agents.length === 0) {
+          console.log(JSON.stringify([]));
+          return;
+        }
+
+        // Filter agents by ID if filter-id option is provided
+        let filteredAgents = agents;
+        if (cmdOptions.filterId) {
+          filteredAgents = agents.filter((agentItem) =>
+            agentItem.id
+              .toLowerCase()
+              .includes(cmdOptions.filterId.toLowerCase())
+          );
+
+          if (filteredAgents.length === 0) {
+            console.log(JSON.stringify([]));
+            return;
+          }
+        }
+
+        // Output raw JSON data without any formatting or filtering
+        console.log(JSON.stringify(filteredAgents, null, 2));
       } catch (error: any) {
         console.error(chalk.red('Error:'), error.message);
       }
@@ -100,8 +141,8 @@ export function agent(program: Command): void {
         if (!orgId) {
           console.error(
             chalk.red(
-              'Organization ID not set. Run "xpander configure --org YOUR_ORG_ID" first.',
-            ),
+              'Organization ID not set. Run "xpander configure --org YOUR_ORG_ID" first.'
+            )
           );
           return;
         }
@@ -111,7 +152,7 @@ export function agent(program: Command): void {
         // If no ID provided, prompt user to select from available agents
         if (!agentId) {
           console.log(
-            chalk.blue(`Fetching agents for organization ID: ${orgId}`),
+            chalk.blue(`Fetching agents for organization ID: ${orgId}`)
           );
 
           const client = createClient();
@@ -264,9 +305,7 @@ export function agent(program: Command): void {
           console.log(chalk.green(`Agent ${agentId} deleted successfully!`));
         } else {
           console.log(
-            chalk.yellow(
-              `Could not delete agent ${agentId}. Please try again.`,
-            ),
+            chalk.yellow(`Could not delete agent ${agentId}. Please try again.`)
           );
         }
       } catch (error: any) {
