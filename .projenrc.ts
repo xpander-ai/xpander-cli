@@ -63,7 +63,5 @@ const project = new typescript.TypeScriptProject({
   ],
 });
 
-project.package.addField('version', '0.0.1');
-
 // Synth the project
 project.synth();
