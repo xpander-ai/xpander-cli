@@ -18,7 +18,7 @@ export function agent(program: Command): void {
     .option('--output <format>', 'Output format (json, table)')
     .option(
       '--filter-id <id>',
-      'Filter agents by ID (supports partial matches)'
+      'Filter agents by ID (supports partial matches)',
     )
     .action(async (cmdOptions) => {
       try {
@@ -38,14 +38,14 @@ export function agent(program: Command): void {
           filteredAgents = agents.filter((agentItem) =>
             agentItem.id
               .toLowerCase()
-              .includes(cmdOptions.filterId.toLowerCase())
+              .includes(cmdOptions.filterId.toLowerCase()),
           );
 
           if (filteredAgents.length === 0) {
             console.log(
               chalk.yellow(
-                `No agents found with ID matching "${cmdOptions.filterId}"`
-              )
+                `No agents found with ID matching "${cmdOptions.filterId}"`,
+              ),
             );
             return;
           }
@@ -95,7 +95,7 @@ export function agent(program: Command): void {
     .description('List all agents in raw JSON format')
     .option(
       '--filter-id <id>',
-      'Filter agents by ID (supports partial matches)'
+      'Filter agents by ID (supports partial matches)',
     )
     .action(async (cmdOptions) => {
       try {
@@ -113,7 +113,7 @@ export function agent(program: Command): void {
           filteredAgents = agents.filter((agentItem) =>
             agentItem.id
               .toLowerCase()
-              .includes(cmdOptions.filterId.toLowerCase())
+              .includes(cmdOptions.filterId.toLowerCase()),
           );
 
           if (filteredAgents.length === 0) {
@@ -141,8 +141,8 @@ export function agent(program: Command): void {
         if (!orgId) {
           console.error(
             chalk.red(
-              'Organization ID not set. Run "xpander configure --org YOUR_ORG_ID" first.'
-            )
+              'Organization ID not set. Run "xpander configure --org YOUR_ORG_ID" first.',
+            ),
           );
           return;
         }
@@ -152,7 +152,7 @@ export function agent(program: Command): void {
         // If no ID provided, prompt user to select from available agents
         if (!agentId) {
           console.log(
-            chalk.blue(`Fetching agents for organization ID: ${orgId}`)
+            chalk.blue(`Fetching agents for organization ID: ${orgId}`),
           );
 
           const client = createClient();
@@ -305,7 +305,9 @@ export function agent(program: Command): void {
           console.log(chalk.green(`Agent ${agentId} deleted successfully!`));
         } else {
           console.log(
-            chalk.yellow(`Could not delete agent ${agentId}. Please try again.`)
+            chalk.yellow(
+              `Could not delete agent ${agentId}. Please try again.`,
+            ),
           );
         }
       } catch (error: any) {

@@ -5,6 +5,7 @@ import { Command } from 'commander';
 import inquirer from 'inquirer';
 import ora from 'ora';
 
+import { createClient } from '../utils/client';
 import {
   // Comment out all unused imports
   // setApiKey,
@@ -13,6 +14,7 @@ import {
   setCurrentProfile,
   listProfiles,
   createProfile,
+  getOrganizationId,
 } from '../utils/config';
 
 /**
@@ -106,31 +108,40 @@ export function configureConfigureCommand(program: Command): void {
         console.log(`Organization ID saved to profile "${profileName}".`);
       } else {
         console.log(
-          chalk.blue(
-            'Organization ID will be auto-detected the first time you use the CLI.',
-          ),
+          chalk.blue('Organization ID will be auto-detected for you now...'),
         );
-        console.log(
-          chalk.blue(
-            'Run "xpander agent list" to automatically detect and save your organization ID.',
-          ),
-        );
+
+        // Auto-detect organization ID by silently calling the agent list endpoint
+        try {
+          const spinner = ora('Detecting organization ID...').start();
+          const client = createClient(profileName);
+          const agents = await client.getAgents();
+
+          // Let the client handle saving the org ID
+          const orgId = getOrganizationId(profileName);
+
+          if (orgId) {
+            spinner.succeed(`Organization ID detected: ${chalk.green(orgId)}`);
+            console.log(
+              `Found ${chalk.cyan(agents.length)} agent(s) in your organization.`,
+            );
+          } else {
+            spinner.warn('Could not auto-detect organization ID.');
+            console.log(chalk.yellow('Run "xpander agent list" to try again.'));
+          }
+        } catch (error) {
+          console.log(
+            chalk.yellow(
+              'Could not auto-detect organization ID. Run "xpander agent list" manually.',
+            ),
+          );
+        }
       }
 
-      // Print information about credentials storage and profiles
-      console.log(`\nCredentials stored at: ${chalk.cyan(credsFilePath)}`);
-      console.log(`Current profile: ${chalk.green(profileName)}`);
-      console.log(
-        `\nYou can use different profiles by adding ${chalk.cyan('--profile <name>')} to any command.`,
-      );
-      console.log(
-        `Example: ${chalk.green('xpander agent list --profile work')}`,
-      );
-      console.log(
-        `You can also switch profiles with: ${chalk.green('xpander profile --switch <name>')}`,
-      );
-
-      console.log(`\nSuccessfully configured using profile "${profileName}".`);
+      // Print information about credentials storage and profiles - more concise
+      console.log(`Credentials stored at: ${chalk.cyan(credsFilePath)}`);
+      console.log(`Profile: ${chalk.green(profileName)}`);
+      console.log(`\nConfiguration successful.`);
     });
 
   program

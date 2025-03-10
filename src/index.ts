@@ -8,12 +8,14 @@ import { version } from '../package.json';
 import { agent } from './commands/agent';
 import { configureConfigureCommand } from './commands/configure';
 import { displayBanner } from './utils/banner';
+import { createClient } from './utils/client';
 import {
   getApiKey,
   getOrganizationId,
   getCurrentProfile,
-  listProfiles,
   setPreferredFormat,
+  setCurrentProfile,
+  listProfiles,
 } from './utils/config';
 
 // Read the version from package.json instead of hardcoding it
@@ -58,7 +60,8 @@ async function promptLogin() {
         'You can configure the profile later by running: xpander configure',
       ),
     );
-    process.exit(0);
+    // Use return instead of exit to allow the CLI to continue normally
+    return;
   }
 }
 
@@ -66,30 +69,30 @@ async function showProfileInfo() {
   const currentProfile = getCurrentProfile();
   const orgId = getOrganizationId();
 
-  console.log(chalk.blue('Current profile:'));
-  console.log(`  ${chalk.bold(currentProfile)}`);
+  // Create a more concise output
+  let profileInfo = `Profile: ${chalk.green(currentProfile)}`;
 
   if (orgId) {
-    console.log(chalk.blue('Organization ID:'));
-    console.log(`  ${chalk.bold(orgId)}`);
+    profileInfo += ` | Organization ID: ${chalk.green(orgId)}`;
+
+    // Get agent count from the API
+    try {
+      const client = createClient();
+      const agents = await client.getAgents();
+
+      if (agents && agents.length >= 0) {
+        profileInfo += ` | Agents: ${chalk.cyan(agents.length)}`;
+      }
+    } catch (error) {
+      // Ignore errors, we're just trying to get the agent count if possible
+    }
   } else {
-    console.log(chalk.yellow('Organization ID:'));
-    console.log(chalk.yellow('  Not set - required for most operations'));
-    console.log(
-      chalk.yellow('  Run "xpander configure --org YOUR_ORG_ID" to set it'),
-    );
+    profileInfo += ` | ${chalk.yellow('No Organization ID - run "xpander agent list" to auto-detect')}`;
   }
 
-  // If there are multiple profiles available, show how to switch
-  const profiles = listProfiles();
-  if (profiles.length > 1) {
-    console.log('');
-    console.log(
-      chalk.gray(
-        `You have ${profiles.length} profiles available. Use 'xpander profile --switch <n>' to switch profiles.`,
-      ),
-    );
-  }
+  console.log(profileInfo);
+
+  // We're removing the message about multiple profiles to make the output more concise
 }
 
 async function main() {
@@ -101,7 +104,9 @@ async function main() {
   const isHelpCommand =
     process.argv.includes('--help') || process.argv.includes('-h');
   const isVersionCommand =
-    process.argv.includes('--version') || process.argv.includes('-V');
+    process.argv.includes('--version') ||
+    process.argv.includes('-V') ||
+    process.argv.includes('-v');
 
   // If just 'xpander' is run with no args, check if logged in
   if (
@@ -116,58 +121,67 @@ async function main() {
       if (!hasArgs) {
         console.log('');
         await showProfileInfo();
-        console.log('');
-        console.log(chalk.green('You can now use the following commands:'));
-        console.log('  xpander agent list     - List all your agents');
-        console.log('  xpander agent new      - Create a new agent');
-        console.log('  xpander agent get      - Get details about your agents');
-        console.log('  xpander profile        - Manage your profiles');
-        console.log('  xpander --help         - Show all available commands');
-        console.log('');
 
-        // Rather than exiting, we'll continue to process the rest of the CLI initialization
-        // This allows the user to continue using the CLI after login
-        // process.exit(0);
+        // Don't show available commands and usage - keep it concise
+        // Return instead of continuing to avoid showing usage
+        return;
       }
     } else if (!hasArgs) {
       // If logged in and no args, show welcome message, profile info, and available commands
       console.log(chalk.green('Welcome back to Xpander CLI!'));
       console.log('');
       await showProfileInfo();
-      console.log('');
-      console.log(chalk.green('Available commands:'));
-      console.log('  xpander agent list     - List all your agents');
-      console.log('  xpander agent new      - Create a new agent');
-      console.log('  xpander agent get      - Get details about your agents');
-      console.log('  xpander profile        - Manage your profiles');
-      console.log('  xpander --help         - Show all available commands');
-      console.log('');
-      process.exit(0);
+
+      // Keep it concise - don't show available commands and usage
+      return;
     }
   }
 
-  const program = new Command('xpander')
-    .version(version)
-    .description('Xpander.ai CLI for managing AI agents')
-    .option('--output <format>', 'Output format (json, table)', 'table')
-    .addHelpCommand()
-    .hook('preAction', (_thisCommand, actionCommand) => {
-      // Save output format preference if specified
-      const options = actionCommand.opts();
+  // Common code to handle version display
+  if (process.argv.includes('-v')) {
+    console.log(version);
+    process.exit(0);
+  }
 
-      if (options.output) {
-        const format = options.output.toLowerCase();
-        if (format === 'json' || format === 'table') {
-          // Set the format preference when specified in the command
-          setPreferredFormat(format);
+  // Initialize the CLI program
+  const program = new Command('xpander')
+    .version(version, '-V, --version', 'Output the version number')
+    .description('Xpander.ai CLI for managing AI agents')
+    .option('-v', 'Output the version number (alias for -V)')
+    .option('--output <format>', 'Output format (json, table)', 'table')
+    .option('--profile <name>', 'Profile to use (default: current profile)')
+    .addHelpCommand()
+    .hook('preAction', (_thisCommand) => {
+      // Get options from the root command (global options)
+      const globalOptions = program.opts();
+
+      // Set the current profile if specified
+      if (globalOptions.profile) {
+        const availableProfiles = listProfiles();
+        if (availableProfiles.includes(globalOptions.profile)) {
+          setCurrentProfile(globalOptions.profile);
         } else {
-          console.warn(
+          console.error(
+            chalk.red(`Profile "${globalOptions.profile}" does not exist.`),
+          );
+          console.error(
             chalk.yellow(
-              `Warning: Unsupported format '${format}'. Using 'table' instead.`,
+              `Available profiles: ${availableProfiles.join(', ') || 'none'}`,
             ),
           );
-          setPreferredFormat('table');
+          console.error(
+            chalk.yellow(
+              `Run "xpander configure --profile ${globalOptions.profile}" to create this profile.`,
+            ),
+          );
+          process.exitCode = 1;
+          process.exit(1); // Exit immediately to prevent further execution
         }
+      }
+
+      // Set the output format if specified
+      if (globalOptions.output) {
+        setPreferredFormat(globalOptions.output);
       }
     });
 
@@ -176,10 +190,14 @@ async function main() {
   agent(program);
 
   await program.parseAsync(process.argv);
+
+  // Explicitly set exit code to 0 for successful completion
+  process.exitCode = 0;
 }
 
 main().catch((error) => {
-  console.error('Error:', error.message);
-  process.exit(1);
+  console.error(chalk.red('Error:'), error.message);
+  process.exitCode = 1;
 });
+
 // Trigger build

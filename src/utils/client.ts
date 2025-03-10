@@ -150,7 +150,7 @@ export class XpanderClient {
       const url = `/v1/agents/list`;
       const response = await this.client.get(url);
 
-      if (response.data && Array.isArray(response.data)) {
+      if (response.data) {
         return response.data;
       } else {
         console.log('Warning: Received unexpected data format from API.');
@@ -380,7 +380,8 @@ export function createClient(profile?: string) {
         'No API key found. Please run "xpander configure" to set up your credentials.',
       ),
     );
-    process.exit(1);
+    // Throw an error instead of exiting the process
+    throw new Error('API key not found');
   }
 
   return new XpanderClient(apiKey, orgId || undefined, profile);
