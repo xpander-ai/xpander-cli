@@ -1,29 +1,25 @@
-import { typescript } from 'projen';
-
-const project = new typescript.TypeScriptProject({
+'use strict';
+Object.defineProperty(exports, '__esModule', { value: true });
+var projen_1 = require('projen');
+var project = new projen_1.typescript.TypeScriptProject({
   name: 'xpander-cli',
   description: 'Command Line Interface for Xpander',
-
   // Author information
   authorName: 'xpander.ai',
   authorEmail: 'opensource@xpander.ai',
-
   // Repository information
   defaultReleaseBranch: 'main',
   repository: 'git@github.com:xpander-ai/xpander-cli.git',
-
   // Binary entry point for the CLI
   bin: {
     xpander: 'lib/index.js',
   },
-
   // TypeScript configuration
   tsconfig: {
     compilerOptions: {
       esModuleInterop: true,
     },
   },
-
   // Disable noUnusedLocals to fix the compilation errors
   tsconfigDev: {
     compilerOptions: {
@@ -31,11 +27,9 @@ const project = new typescript.TypeScriptProject({
       noUnusedParameters: false,
     },
   },
-
   prettier: true,
   prettierOptions: { settings: { singleQuote: true } },
   dependabot: true,
-
   deps: [
     'boxen@^5.1.2',
     'chalk@^4.1.2',
@@ -48,7 +42,6 @@ const project = new typescript.TypeScriptProject({
     'yargs',
     'axios',
   ],
-
   // Development dependencies
   devDeps: [
     '@types/fs-extra',
