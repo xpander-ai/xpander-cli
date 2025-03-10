@@ -21,7 +21,10 @@ export function configureConfigureCommand(program: Command): void {
     .command('configure')
     .description('Configure your API credentials')
     .option('--key <api_key>', 'Your Xpander API key')
-    .option('--org <organization_id>', 'Your Xpander organization ID')
+    .option(
+      '--org <organization_id>',
+      'Your Xpander organization ID (optional)',
+    )
     .option('--profile <profile>', 'Profile name to use')
     .option('--no-validate', 'Skip credential validation')
     .action(async (options) => {
@@ -89,32 +92,51 @@ export function configureConfigureCommand(program: Command): void {
         );
       }
 
-      // Get organization ID if not provided
+      // Get organization ID if provided via CLI option
+      // Otherwise, make it optional and allow users to skip it
       if (!organizationId) {
         const answers = await inquirer.prompt([
           {
-            type: 'input',
-            name: 'orgId',
-            message: 'Enter your Xpander organization ID:',
-            validate: (input) => {
-              if (!input) return 'Organization ID is required';
-              return true;
-            },
+            type: 'confirm',
+            name: 'setOrgId',
+            message:
+              'Do you want to specify an organization ID? (Advanced users)',
+            default: false,
           },
         ]);
-        organizationId = answers.orgId;
+
+        if (answers.setOrgId) {
+          const orgAnswer = await inquirer.prompt([
+            {
+              type: 'input',
+              name: 'orgId',
+              message: 'Enter your Xpander organization ID:',
+              validate: (input) => {
+                if (!input)
+                  return 'Please provide an organization ID or cancel';
+                return true;
+              },
+            },
+          ]);
+          organizationId = orgAnswer.orgId;
+        }
       }
 
-      // Save the credentials
+      // Save the configuration
       createProfile(profileName, apiKey, organizationId);
 
-      console.log(chalk.green(`API key saved to profile "${profileName}".`));
-      console.log(
-        chalk.green(`Organization ID saved to profile "${profileName}".`),
-      );
-      console.log(
-        chalk.green(`Successfully configured using profile "${profileName}".`),
-      );
+      // Provide feedback
+      console.log(`API key saved to profile "${profileName}".`);
+      if (organizationId) {
+        console.log(`Organization ID saved to profile "${profileName}".`);
+      } else {
+        console.log(
+          chalk.blue(
+            'No organization ID was provided. The CLI will attempt to determine the organization automatically.',
+          ),
+        );
+      }
+      console.log(`Successfully configured using profile "${profileName}".`);
     });
 
   program
