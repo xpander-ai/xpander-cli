@@ -60,12 +60,11 @@
     "boxen": "^5.1.2",
     "chalk": "^4.1.2",
     "cli-table3": "^0.6.5",
-    "commander": "^13.1.0",
+    "commander": "^10.0.1",
     "conf": "^13.1.0",
     "fs-extra": "^11.3.0",
     "inquirer": "^8.2.5",
     "ora": "^5.4.1",
-    "xpander-cli": "file:dist/js/xpander-cli-0.0.0.tgz",
     "yargs": "^17.7.2"
   },
   "main": "lib/index.js",

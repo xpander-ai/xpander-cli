@@ -14,8 +14,16 @@ export function formatOutput(
     format?: string;
   } = {},
 ): void {
-  const format = options.format || getPreferredFormat();
+  // Check if --output json is in the command line arguments
+  const hasJsonFlag =
+    process.argv.includes('--output') &&
+    process.argv.indexOf('--output') < process.argv.length - 1 &&
+    process.argv[process.argv.indexOf('--output') + 1] === 'json';
 
+  // Prioritize command line arguments over options
+  const format = hasJsonFlag ? 'json' : options.format || getPreferredFormat();
+
+  // Check if format is explicitly set to json
   if (format === 'json') {
     console.log(JSON.stringify(data, null, 2));
     return;

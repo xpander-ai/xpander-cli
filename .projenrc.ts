@@ -12,6 +12,9 @@ const project = new typescript.TypeScriptProject({
   defaultReleaseBranch: 'main',
   repository: 'git@github.com:xpander-ai/xpander-cli.git',
 
+  release: true,
+  releaseToNpm: true,
+
   // Binary entry point for the CLI
   bin: {
     xpander: 'lib/index.js',
@@ -40,7 +43,7 @@ const project = new typescript.TypeScriptProject({
     'boxen@^5.1.2',
     'chalk@^4.1.2',
     'cli-table3',
-    'commander',
+    'commander@^10.0.1',
     'conf',
     'fs-extra',
     'inquirer@^8.2.5',
@@ -59,5 +62,6 @@ const project = new typescript.TypeScriptProject({
     'ts-node',
   ],
 });
+
 // Synth the project
 project.synth();

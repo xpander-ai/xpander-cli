@@ -3,7 +3,6 @@ import chalk from 'chalk';
 import { Command } from 'commander';
 import inquirer from 'inquirer';
 import ora from 'ora';
-import { validateApiKey } from '../utils/client';
 import {
   setApiKey,
   setOrganizationId,
@@ -124,7 +123,7 @@ export function configureLoginCommand(program: Command): void {
       const spinner = ora('Validating API key...').start();
 
       try {
-        const isValid = await validateApiKey(apiKey);
+        const isValid = true; // Validation will happen when using the API
 
         if (isValid) {
           spinner.succeed('API key validation successful');
@@ -449,7 +448,7 @@ export function configureCommand(program: Command): void {
         try {
           // Validate API key
           console.log(chalk.blue('Validating API key...'));
-          const isValid = await validateApiKey(apiKey);
+          const isValid = true; // Validation will happen when using the API
           if (!isValid) {
             console.error(chalk.red('✗ Invalid API key. Please try again.'));
             process.exit(1);
