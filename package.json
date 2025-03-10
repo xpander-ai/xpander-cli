@@ -65,7 +65,6 @@
     "fs-extra": "^11.3.0",
     "inquirer": "^8.2.5",
     "ora": "^5.4.1",
-    "xpander-cli": "file:dist/js/xpander-cli-0.0.0.tgz",
     "yargs": "^17.7.2"
   },
   "main": "lib/index.js",
