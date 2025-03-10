@@ -4,39 +4,14 @@ import * as fs from 'fs-extra';
 
 // Config directory and files in user's home directory
 const CONFIG_DIR = path.join(os.homedir(), '.xpander');
-const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
+const CREDS_FILE = path.join(CONFIG_DIR, 'credentials');
+const CONFIG_FILE = path.join(CONFIG_DIR, 'config');
 
 // Default profile name
 const DEFAULT_PROFILE = 'default';
 
 // Default format
 const DEFAULT_FORMAT = 'table';
-
-// Config structure
-interface ProfileConfig {
-  api_key: string;
-  organization_id?: string;
-}
-
-interface XpanderConfig {
-  currentProfile: string;
-  lastUsedAgentId?: string;
-  preferredFormat: string;
-  profiles: Record<string, ProfileConfig>;
-}
-
-/**
- * Default config structure
- */
-const DEFAULT_CONFIG: XpanderConfig = {
-  currentProfile: DEFAULT_PROFILE,
-  preferredFormat: DEFAULT_FORMAT,
-  profiles: {
-    [DEFAULT_PROFILE]: {
-      api_key: '',
-    },
-  },
-};
 
 /**
  * Ensures the config directory exists
@@ -48,186 +23,283 @@ function ensureConfigDirExists(): void {
 }
 
 /**
- * Get the config from the file, or create default if it doesn't exist
+ * Parse a credentials file in AWS-style format
+ * [profile-name]
+ * key=value
  */
-function getConfig(): XpanderConfig {
-  ensureConfigDirExists();
+function parseCredsFile(
+  filePath: string,
+): Record<string, Record<string, string>> {
+  if (!fs.existsSync(filePath)) {
+    return {};
+  }
 
-  try {
-    // Try to read the new JSON config file
-    if (fs.existsSync(CONFIG_FILE)) {
-      const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
-      return config as XpanderConfig;
+  const content = fs.readFileSync(filePath, 'utf-8');
+  const lines = content.split('\n');
+  const profiles: Record<string, Record<string, string>> = {};
+
+  let currentProfile: string | null = null;
+
+  for (const line of lines) {
+    const trimmedLine = line.trim();
+
+    // Skip empty lines and comments
+    if (!trimmedLine || trimmedLine.startsWith('#')) {
+      continue;
     }
 
-    // If no config file exists, create default
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(DEFAULT_CONFIG, null, 2));
-    return { ...DEFAULT_CONFIG };
-  } catch (error) {
-    console.error('Error reading config file:', error);
-    return { ...DEFAULT_CONFIG };
+    // Profile header
+    const profileMatch = trimmedLine.match(/^\[([\w-]+)\]$/);
+    if (profileMatch) {
+      currentProfile = profileMatch[1];
+      if (!profiles[currentProfile]) {
+        profiles[currentProfile] = {};
+      }
+      continue;
+    }
+
+    // Key-value pair
+    if (currentProfile) {
+      const keyValueMatch = trimmedLine.match(/^([\w_]+)=(.*)$/);
+      if (keyValueMatch) {
+        const [, key, value] = keyValueMatch;
+        profiles[currentProfile][key] = value;
+      }
+    }
   }
+
+  return profiles;
 }
 
 /**
- * Save the config to the file
+ * Save credentials in AWS-style format
  */
-function saveConfig(config: XpanderConfig): void {
-  ensureConfigDirExists();
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
+function saveCredsFile(
+  filePath: string,
+  profiles: Record<string, Record<string, string>>,
+): void {
+  let content = '';
+
+  for (const [profileName, profileData] of Object.entries(profiles)) {
+    content += `[${profileName}]\n`;
+
+    for (const [key, value] of Object.entries(profileData)) {
+      content += `${key}=${value}\n`;
+    }
+
+    content += '\n';
+  }
+
+  fs.writeFileSync(filePath, content);
+}
+
+/**
+ * Read a single line key=value config file
+ */
+function readConfigFile(filePath: string): Record<string, string> {
+  if (!fs.existsSync(filePath)) {
+    return {};
+  }
+
+  const content = fs.readFileSync(filePath, 'utf-8');
+  const lines = content.split('\n');
+  const config: Record<string, string> = {};
+
+  for (const line of lines) {
+    const trimmedLine = line.trim();
+
+    // Skip empty lines and comments
+    if (!trimmedLine || trimmedLine.startsWith('#')) {
+      continue;
+    }
+
+    // Key-value pair
+    const keyValueMatch = trimmedLine.match(/^([\w_]+)=(.*)$/);
+    if (keyValueMatch) {
+      const [, key, value] = keyValueMatch;
+      config[key] = value;
+    }
+  }
+
+  return config;
+}
+
+/**
+ * Save a single line key=value config file
+ */
+function saveConfigFile(
+  filePath: string,
+  config: Record<string, string>,
+): void {
+  let content = '';
+
+  for (const [key, value] of Object.entries(config)) {
+    content += `${key}=${value}\n`;
+  }
+
+  fs.writeFileSync(filePath, content);
 }
 
 /**
  * Get the current active profile name
  */
 export function getCurrentProfile(): string {
-  const config = getConfig();
-  return config.currentProfile || DEFAULT_PROFILE;
+  ensureConfigDirExists();
+  const config = readConfigFile(CONFIG_FILE);
+  return config.current_profile || DEFAULT_PROFILE;
 }
 
 /**
  * Set the current active profile
  */
 export function setCurrentProfile(profile: string): void {
-  const config = getConfig();
-
-  // Make sure the profile exists
-  if (!config.profiles[profile]) {
-    config.profiles[profile] = {
-      api_key: '',
-    };
-  }
-
-  config.currentProfile = profile;
-  saveConfig(config);
-}
-
-/**
- * List all available profiles
- */
-export function listProfiles(): string[] {
-  const config = getConfig();
-  return Object.keys(config.profiles);
+  ensureConfigDirExists();
+  const config = readConfigFile(CONFIG_FILE);
+  config.current_profile = profile;
+  saveConfigFile(CONFIG_FILE, config);
 }
 
 /**
  * Get the API key for a profile
  */
 export function getApiKey(profile?: string): string {
-  const config = getConfig();
-  const profileName = profile || config.currentProfile;
+  const profileName = profile || getCurrentProfile();
+  ensureConfigDirExists();
 
-  if (!config.profiles[profileName]) {
-    return '';
+  const creds = parseCredsFile(CREDS_FILE);
+  if (creds[profileName] && creds[profileName].xpander_api_key) {
+    return creds[profileName].xpander_api_key;
   }
 
-  return config.profiles[profileName].api_key || '';
+  return '';
 }
 
 /**
  * Set the API key for a profile
  */
 export function setApiKey(apiKey: string, profile?: string): void {
-  const config = getConfig();
-  const profileName = profile || config.currentProfile;
+  const profileName = profile || getCurrentProfile();
+  ensureConfigDirExists();
 
-  // Create profile if it doesn't exist
-  if (!config.profiles[profileName]) {
-    config.profiles[profileName] = {
-      api_key: apiKey,
-    };
-  } else {
-    config.profiles[profileName].api_key = apiKey;
+  const creds = parseCredsFile(CREDS_FILE);
+  if (!creds[profileName]) {
+    creds[profileName] = {};
   }
 
-  saveConfig(config);
+  creds[profileName].xpander_api_key = apiKey;
+  saveCredsFile(CREDS_FILE, creds);
 }
 
 /**
  * Get the organization ID for a profile
  */
 export function getOrganizationId(profile?: string): string {
-  const config = getConfig();
-  const profileName = profile || config.currentProfile;
+  const profileName = profile || getCurrentProfile();
+  ensureConfigDirExists();
 
-  if (!config.profiles[profileName]) {
-    return '';
+  const creds = parseCredsFile(CREDS_FILE);
+  if (creds[profileName] && creds[profileName].xpander_organization_id) {
+    return creds[profileName].xpander_organization_id;
   }
 
-  return config.profiles[profileName].organization_id || '';
+  return '';
 }
 
 /**
  * Set the organization ID for a profile
  */
-export function setOrganizationId(
-  organizationId: string,
-  profile?: string,
-): void {
-  const config = getConfig();
-  const profileName = profile || config.currentProfile;
+export function setOrganizationId(orgId: string, profile?: string): void {
+  const profileName = profile || getCurrentProfile();
+  ensureConfigDirExists();
 
-  // Create profile if it doesn't exist
-  if (!config.profiles[profileName]) {
-    config.profiles[profileName] = {
-      api_key: '',
-      organization_id: organizationId,
-    };
-  } else {
-    config.profiles[profileName].organization_id = organizationId;
+  const creds = parseCredsFile(CREDS_FILE);
+  if (!creds[profileName]) {
+    creds[profileName] = {};
   }
 
-  saveConfig(config);
-}
-
-/**
- * Create or update a profile with API key and optional org ID
- */
-export function createProfile(
-  profileName: string,
-  apiKey: string,
-  organizationId?: string,
-): void {
-  const config = getConfig();
-
-  config.profiles[profileName] = {
-    api_key: apiKey,
-    ...(organizationId ? { organization_id: organizationId } : {}),
-  };
-
-  saveConfig(config);
-}
-
-/**
- * Get the last used agent ID
- */
-export function getLastUsedAgentId(): string {
-  const config = getConfig();
-  return config.lastUsedAgentId || '';
-}
-
-/**
- * Set the last used agent ID
- */
-export function setLastUsedAgentId(agentId: string): void {
-  const config = getConfig();
-  config.lastUsedAgentId = agentId;
-  saveConfig(config);
+  creds[profileName].xpander_organization_id = orgId;
+  saveCredsFile(CREDS_FILE, creds);
 }
 
 /**
  * Get the preferred output format
  */
 export function getPreferredFormat(): string {
-  const config = getConfig();
-  return config.preferredFormat || DEFAULT_FORMAT;
+  ensureConfigDirExists();
+  const config = readConfigFile(CONFIG_FILE);
+  return config.output_format || DEFAULT_FORMAT;
 }
 
 /**
  * Set the preferred output format
  */
 export function setPreferredFormat(format: string): void {
-  const config = getConfig();
-  config.preferredFormat = format;
-  saveConfig(config);
+  ensureConfigDirExists();
+  const config = readConfigFile(CONFIG_FILE);
+  config.output_format = format;
+  saveConfigFile(CONFIG_FILE, config);
+}
+
+/**
+ * List all profiles
+ */
+export function listProfiles(): string[] {
+  ensureConfigDirExists();
+  const creds = parseCredsFile(CREDS_FILE);
+  return Object.keys(creds);
+}
+
+/**
+ * Create a new profile with API key and optional organization ID
+ */
+export function createProfile(
+  profileName: string,
+  apiKey: string,
+  orgId?: string,
+): void {
+  ensureConfigDirExists();
+
+  const creds = parseCredsFile(CREDS_FILE);
+  if (!creds[profileName]) {
+    creds[profileName] = {};
+  }
+
+  creds[profileName].xpander_api_key = apiKey;
+
+  if (orgId) {
+    creds[profileName].xpander_organization_id = orgId;
+  }
+
+  saveCredsFile(CREDS_FILE, creds);
+
+  // Set as current profile if it doesn't exist
+  const config = readConfigFile(CONFIG_FILE);
+  if (!config.current_profile) {
+    config.current_profile = profileName;
+    saveConfigFile(CONFIG_FILE, config);
+  }
+}
+
+/**
+ * Delete a profile
+ */
+export function deleteProfile(profileName: string): void {
+  if (profileName === DEFAULT_PROFILE) {
+    throw new Error('Cannot delete the default profile');
+  }
+
+  ensureConfigDirExists();
+
+  const creds = parseCredsFile(CREDS_FILE);
+  if (creds[profileName]) {
+    delete creds[profileName];
+    saveCredsFile(CREDS_FILE, creds);
+  }
+
+  // If the deleted profile was the current one, reset to default
+  const config = readConfigFile(CONFIG_FILE);
+  if (config.current_profile === profileName) {
+    config.current_profile = DEFAULT_PROFILE;
+    saveConfigFile(CONFIG_FILE, config);
+  }
 }
