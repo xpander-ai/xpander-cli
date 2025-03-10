@@ -28,11 +28,59 @@ export function agent(program: Command): void {
           return;
         }
 
+        // Prepare agents data with formatted fields for better display
+        const formattedAgents = agents.map((agentItem) => {
+          // Format the date properly
+          let createdDate = '';
+          try {
+            createdDate = new Date(agentItem.created_at).toLocaleDateString();
+          } catch (e) {
+            // If date parsing fails, use the raw value
+            createdDate = agentItem.created_at || '';
+          }
+
+          // Process data for better table display
+          return {
+            id: agentItem.id.substring(0, 8) + '...', // Show shorter ID for better readability
+            name: agentItem.name,
+            description: agentItem.description
+              ? agentItem.description.substring(0, 30) +
+                (agentItem.description.length > 30 ? '...' : '')
+              : '',
+            status: agentItem.status,
+            type: agentItem.type || '',
+            model: agentItem.model_name || '',
+            created_at: createdDate,
+            tools_count: agentItem.tools ? agentItem.tools.length : 0,
+            is_ai_employee: agentItem.is_ai_employee ? 'Yes' : 'No',
+          };
+        });
+
         // Format and display agents
-        formatOutput(agents, {
+        formatOutput(cmdOptions.output === 'json' ? agents : formattedAgents, {
           title: 'Your Agents',
-          columns: ['id', 'name', 'createdAt', 'updatedAt'],
-          headers: ['ID', 'Name', 'Created', 'Updated'],
+          columns: [
+            'id',
+            'name',
+            'description',
+            'status',
+            'type',
+            'model',
+            'created_at',
+            'tools_count',
+            'is_ai_employee',
+          ],
+          headers: [
+            'ID',
+            'Name',
+            'Description',
+            'Status',
+            'Type',
+            'Model',
+            'Created',
+            'Tools',
+            'AI Employee',
+          ],
           format: cmdOptions.output, // Pass the output format option
         });
       } catch (error: any) {

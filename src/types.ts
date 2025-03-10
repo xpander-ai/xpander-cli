@@ -17,4 +17,17 @@ export interface Agent {
     goal?: string;
     general?: string;
   };
+  // Additional properties from the API response
+  assistant_id?: string;
+  created_by_prompt?: any;
+  thread_ids?: string[];
+  prompts?: string[];
+  enriched_prompts?: string[];
+  tools?: any[];
+  type?: string;
+  model_name?: string;
+  model_provider?: string;
+  is_ai_employee?: boolean;
+  deletable?: boolean;
+  // Other properties that might be needed
 }
