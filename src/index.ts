@@ -151,9 +151,14 @@ async function main() {
     .hook('preAction', (_thisCommand, actionCommand) => {
       // Save output format preference if specified
       const options = actionCommand.opts();
+
+      // Debug output
+      console.log('Debug - Global options:', options);
+
       if (options.output) {
         const format = options.output.toLowerCase();
         if (format === 'json' || format === 'table') {
+          // Set the format preference when specified in the command
           setPreferredFormat(format);
         } else {
           console.warn(

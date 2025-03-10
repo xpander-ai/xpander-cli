@@ -133,10 +133,11 @@ export class XpanderClient {
    */
   async getAgents(): Promise<Agent[]> {
     try {
-      console.log(`Fetching agents...`);
-      // Only log the organization ID if it's already known, don't emphasize it's missing
+      // Create a single, clean message that includes the organization ID if available
       if (this.orgId) {
         console.log(`Fetching agents for organization: ${this.orgId}`);
+      } else {
+        console.log(`Fetching agents...`);
       }
 
       // Use the verified working endpoint from our testing

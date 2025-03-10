@@ -16,6 +16,11 @@ export function formatOutput(
 ): void {
   const format = options.format || getPreferredFormat();
 
+  // Debug output
+  console.log(
+    `Debug - Format option: ${options.format}, Preferred format: ${getPreferredFormat()}, Using: ${format}`,
+  );
+
   if (format === 'json') {
     console.log(JSON.stringify(data, null, 2));
     return;
