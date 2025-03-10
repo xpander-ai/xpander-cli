@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-const CLI_PATH = path.resolve(__dirname, '../lib/index.js');
+const CLI_PATH = path.resolve(__dirname, '../lib/cli/index.js');
 const CONFIG_DIR = path.join(os.homedir(), '.xpander');
 
 describe('Xpander CLI', () => {

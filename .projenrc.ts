@@ -12,6 +12,9 @@ const project = new typescript.TypeScriptProject({
   defaultReleaseBranch: 'main',
   repository: 'git@github.com:xpander-ai/xpander-cli.git',
 
+  release: true,
+  releaseToNpm: true,
+
   // Binary entry point for the CLI
   bin: {
     xpander: 'lib/index.js',
