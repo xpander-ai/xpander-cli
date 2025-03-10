@@ -152,9 +152,6 @@ async function main() {
       // Save output format preference if specified
       const options = actionCommand.opts();
 
-      // Debug output
-      console.log('Debug - Global options:', options);
-
       if (options.output) {
         const format = options.output.toLowerCase();
         if (format === 'json' || format === 'table') {

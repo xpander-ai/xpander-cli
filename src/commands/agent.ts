@@ -16,11 +16,8 @@ export function agent(program: Command): void {
     .command('list')
     .description('List all agents')
     .option('--output <format>', 'Output format (json, table)')
-    .action(async (options) => {
+    .action(async (cmdOptions) => {
       try {
-        // Debug output
-        console.log('Debug - Command options:', options);
-
         const client = createClient();
 
         // Instead of using client.get directly, use the getAgents method from XpanderClient
@@ -36,7 +33,7 @@ export function agent(program: Command): void {
           title: 'Your Agents',
           columns: ['id', 'name', 'createdAt', 'updatedAt'],
           headers: ['ID', 'Name', 'Created', 'Updated'],
-          format: options.output, // Use the command's own output option
+          format: cmdOptions.output, // Pass the output format option
         });
       } catch (error: any) {
         console.error(chalk.red('Error:'), error.message);
