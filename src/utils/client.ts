@@ -20,7 +20,7 @@ export class XpanderClient {
     if (!this.orgId) {
       console.log(chalk.yellow('Warning: No organization ID available.'));
       console.log(
-        chalk.yellow('All API operations will require an organization ID.'),
+        chalk.yellow('All API operations will require an organization ID.')
       );
       console.log(chalk.yellow('Set your organization ID with:'));
       console.log(chalk.blue('  xpander configure --org YOUR_ORGANIZATION_ID'));
@@ -47,32 +47,32 @@ export class XpanderClient {
           if (status === 401) {
             console.error(
               chalk.red(
-                'Authentication error: Your API key is invalid or expired.',
-              ),
+                'Authentication error: Your API key is invalid or expired.'
+              )
             );
             console.error(
               chalk.blue(
-                'Please run "xpander configure" to update your API key.',
-              ),
+                'Please run "xpander configure" to update your API key.'
+              )
             );
             process.exit(1);
           } else if (status === 403) {
             console.error(
               chalk.red(
-                'Access denied: You do not have permission to perform this action.',
-              ),
+                'Access denied: You do not have permission to perform this action.'
+              )
             );
 
             // If there's an organization ID problem, suggest how to fix it
             if (data?.message?.includes('organization')) {
               console.error(
-                chalk.blue('Please check your organization ID or permissions.'),
+                chalk.blue('Please check your organization ID or permissions.')
               );
               console.error(
-                chalk.blue('You can update your organization ID with:'),
+                chalk.blue('You can update your organization ID with:')
               );
               console.error(
-                chalk.blue('  xpander configure --org YOUR_ORGANIZATION_ID'),
+                chalk.blue('  xpander configure --org YOUR_ORGANIZATION_ID')
               );
             }
 
@@ -81,7 +81,7 @@ export class XpanderClient {
         }
 
         return Promise.reject(error);
-      },
+      }
     );
   }
 
@@ -126,13 +126,11 @@ export class XpanderClient {
       if (!this.orgId) {
         console.log(chalk.red('ERROR: No organization ID available.'));
         console.log(
-          chalk.yellow(
-            'An organization ID is REQUIRED for all API operations.',
-          ),
+          chalk.yellow('An organization ID is REQUIRED for all API operations.')
         );
         console.log(chalk.yellow('Set your organization ID with:'));
         console.log(
-          chalk.blue('  xpander configure --org YOUR_ORGANIZATION_ID'),
+          chalk.blue('  xpander configure --org YOUR_ORGANIZATION_ID')
         );
         return false;
       }
@@ -150,18 +148,14 @@ export class XpanderClient {
 
       if (!hasOrgId) {
         console.log(
-          chalk.red(
-            'ERROR: No organization ID available. Cannot fetch agents.',
-          ),
+          chalk.red('ERROR: No organization ID available. Cannot fetch agents.')
         );
         console.log(
-          chalk.yellow(
-            'An organization ID is REQUIRED for all API operations.',
-          ),
+          chalk.yellow('An organization ID is REQUIRED for all API operations.')
         );
         console.log(chalk.yellow('Set your organization ID with:'));
         console.log(
-          chalk.blue('  xpander configure --org YOUR_ORGANIZATION_ID'),
+          chalk.blue('  xpander configure --org YOUR_ORGANIZATION_ID')
         );
         return [];
       }
@@ -179,14 +173,14 @@ export class XpanderClient {
     } catch (error: any) {
       if (error.code === 'ERR_INVALID_URL') {
         console.log(
-          'Error: Invalid URL for agent list. Organization ID may be incorrect.',
+          'Error: Invalid URL for agent list. Organization ID may be incorrect.'
         );
         return [];
       } else if (error.response) {
         console.error(
           `API Error (${error.response.status}): ${
             error.response.data?.message || 'Unknown error'
-          }`,
+          }`
         );
       } else {
         console.error('Error retrieving agents:', error.message || error);
@@ -206,17 +200,15 @@ export class XpanderClient {
       if (!hasOrgId) {
         console.log(
           chalk.red(
-            'ERROR: No organization ID available. Cannot fetch agent details.',
-          ),
+            'ERROR: No organization ID available. Cannot fetch agent details.'
+          )
         );
         console.log(
-          chalk.yellow(
-            'An organization ID is REQUIRED for all API operations.',
-          ),
+          chalk.yellow('An organization ID is REQUIRED for all API operations.')
         );
         console.log(chalk.yellow('Set your organization ID with:'));
         console.log(
-          chalk.blue('  xpander configure --org YOUR_ORGANIZATION_ID'),
+          chalk.blue('  xpander configure --org YOUR_ORGANIZATION_ID')
         );
         return null;
       }
@@ -228,19 +220,19 @@ export class XpanderClient {
     } catch (error: any) {
       if (error.code === 'ERR_INVALID_URL') {
         console.log(
-          'Error: Invalid URL for agent details. Organization ID may be incorrect.',
+          'Error: Invalid URL for agent details. Organization ID may be incorrect.'
         );
         return null;
       } else if (error.response) {
         console.error(
           `API Error (${error.response.status}): ${
             error.response.data?.message || 'Unknown error'
-          }`,
+          }`
         );
       } else {
         console.error(
           `Error retrieving agent ${agentId}:`,
-          error.message || error,
+          error.message || error
         );
       }
       return null;
@@ -257,18 +249,14 @@ export class XpanderClient {
 
       if (!hasOrgId) {
         console.log(
-          chalk.red(
-            'ERROR: No organization ID available. Cannot create agent.',
-          ),
+          chalk.red('ERROR: No organization ID available. Cannot create agent.')
         );
         console.log(
-          chalk.yellow(
-            'An organization ID is REQUIRED for all API operations.',
-          ),
+          chalk.yellow('An organization ID is REQUIRED for all API operations.')
         );
         console.log(chalk.yellow('Set your organization ID with:'));
         console.log(
-          chalk.blue('  xpander configure --org YOUR_ORGANIZATION_ID'),
+          chalk.blue('  xpander configure --org YOUR_ORGANIZATION_ID')
         );
         throw new Error('Organization ID is required to create an agent');
       }
@@ -282,7 +270,7 @@ export class XpanderClient {
         console.error(
           `API Error (${error.response.status}): ${
             error.response.data?.message || 'Unknown error'
-          }`,
+          }`
         );
       } else {
         console.error('Error creating agent:', error.message || error);
@@ -301,13 +289,13 @@ export class XpanderClient {
 
       if (!hasOrgId) {
         console.log(
-          'Warning: No organization ID available. Cannot delete agent.',
+          'Warning: No organization ID available. Cannot delete agent.'
         );
         return false;
       }
 
       console.log(
-        `Deleting agent ${agentId} from organization: ${this.orgId}...`,
+        `Deleting agent ${agentId} from organization: ${this.orgId}...`
       );
       const url = `/${this.orgId}/agents/${agentId}`;
       await this.client.delete(url);
@@ -317,12 +305,12 @@ export class XpanderClient {
         console.error(
           `API Error (${error.response.status}): ${
             error.response.data?.message || 'Unknown error'
-          }`,
+          }`
         );
       } else {
         console.error(
           `Error deleting agent ${agentId}:`,
-          error.message || error,
+          error.message || error
         );
       }
       return false;
@@ -334,7 +322,7 @@ export class XpanderClient {
    */
   async updateAgent(
     agentId: string,
-    data: Partial<Agent>,
+    data: Partial<Agent>
   ): Promise<Agent | null> {
     try {
       // Ensure we have an organization ID
@@ -342,13 +330,13 @@ export class XpanderClient {
 
       if (!hasOrgId) {
         console.log(
-          'Warning: No organization ID available. Cannot update agent.',
+          'Warning: No organization ID available. Cannot update agent.'
         );
         return null;
       }
 
       console.log(
-        `Updating agent ${agentId} in organization: ${this.orgId}...`,
+        `Updating agent ${agentId} in organization: ${this.orgId}...`
       );
       const url = `/${this.orgId}/agents/${agentId}`;
       const response = await this.client.put(url, data);
@@ -358,12 +346,12 @@ export class XpanderClient {
         console.error(
           `API Error (${error.response.status}): ${
             error.response.data?.message || 'Unknown error'
-          }`,
+          }`
         );
       } else {
         console.error(
           `Error updating agent ${agentId}:`,
-          error.message || error,
+          error.message || error
         );
       }
       return null;
@@ -380,7 +368,7 @@ export class XpanderClient {
 
       if (!hasOrgId) {
         console.log(
-          'Warning: No organization ID available. Cannot sync agent.',
+          'Warning: No organization ID available. Cannot sync agent.'
         );
         return false;
       }
@@ -394,12 +382,12 @@ export class XpanderClient {
         console.error(
           `API Error (${error.response.status}): ${
             error.response.data?.message || 'Unknown error'
-          }`,
+          }`
         );
       } else {
         console.error(
           `Error syncing agent ${agentId}:`,
-          error.message || error,
+          error.message || error
         );
       }
       return false;
@@ -412,93 +400,13 @@ export class XpanderClient {
  */
 export function createClient() {
   const apiKey = getApiKey();
-  const organizationId = getOrganizationId();
+  const orgId = getOrganizationId();
 
   if (!apiKey) {
-    throw new Error(
-      'API key not found. Please run "xpander configure" to set up your credentials.',
-    );
+    throw new Error('API key is not set. Run "xpander configure" to set it.');
   }
 
-  const client = axios.create({
-    baseURL: API_BASE_URL,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-      ...(organizationId ? { 'X-Organization-Id': organizationId } : {}),
-    },
-  });
-
-  // Add response interceptor to handle common errors
-  client.interceptors.response.use(
-    (response: AxiosResponse) => response,
-    (error: any) => {
-      if (error.response) {
-        const { status, data } = error.response;
-
-        if (status === 401) {
-          console.error(
-            chalk.red(
-              'Authentication error: Your API key is invalid or expired.',
-            ),
-          );
-          console.error(
-            chalk.blue(
-              'Please run "xpander configure" to update your API key.',
-            ),
-          );
-          process.exit(1);
-        } else if (status === 403) {
-          console.error(
-            chalk.red(
-              'Access denied: You do not have permission to perform this action.',
-            ),
-          );
-
-          // If there's an organization ID problem, suggest how to fix it
-          if (data?.message?.includes('organization')) {
-            console.error(
-              chalk.blue('Please check your organization ID or permissions.'),
-            );
-            console.error(
-              chalk.blue('You can update your organization ID with:'),
-            );
-            console.error(
-              chalk.blue('  xpander configure --org YOUR_ORGANIZATION_ID'),
-            );
-          }
-
-          process.exit(1);
-        }
-      }
-
-      return Promise.reject(error);
-    },
-  );
-
-  return client;
-}
-
-/**
- * Validate an API key against the Xpander API
- */
-export async function validateApiKey(apiKey: string): Promise<boolean> {
-  try {
-    const client = axios.create({
-      baseURL: API_BASE_URL,
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-    });
-
-    // Try to get user info to validate the key
-    await client.get('/users/me');
-    return true;
-  } catch (error) {
-    // Don't output errors during validation
-    return false;
-  }
+  return new XpanderClient(apiKey, orgId || undefined);
 }
 
 /**
@@ -511,7 +419,7 @@ export function extractOrgIdFromError(error: any): string | null {
 
   if (error.response?.data?.message) {
     const match = error.response.data.message.match(
-      /organization[-_\s]?id[:\s]+["']?([a-zA-Z0-9_-]+)["']?/i,
+      /organization[-_\s]?id[:\s]+["']?([a-zA-Z0-9_-]+)["']?/i
     );
     if (match && match[1]) {
       return match[1];
