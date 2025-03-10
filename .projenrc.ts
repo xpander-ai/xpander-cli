@@ -15,10 +15,6 @@ const project = new typescript.TypeScriptProject({
   release: true,
   releaseToNpm: true,
 
-  // Set version explicitly
-  minNodeVersion: '16.13.0',
-  workflowNodeVersion: '16.x',
-
   // Binary entry point for the CLI
   bin: {
     xpander: 'lib/index.js',
@@ -47,7 +43,7 @@ const project = new typescript.TypeScriptProject({
     'boxen@^5.1.2',
     'chalk@^4.1.2',
     'cli-table3',
-    'commander',
+    'commander@^10.0.1',
     'conf',
     'fs-extra',
     'inquirer@^8.2.5',
