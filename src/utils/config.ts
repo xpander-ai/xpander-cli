@@ -13,6 +13,9 @@ const DEFAULT_PROFILE = 'default';
 // Default format
 const DEFAULT_FORMAT = 'table';
 
+// Special section for default profile in credentials file
+const DEFAULT_SECTION = 'default';
+
 /**
  * Ensures the config directory exists
  */
@@ -145,6 +148,19 @@ function saveConfigFile(
  */
 export function getCurrentProfile(): string {
   ensureConfigDirExists();
+
+  // First check if we have an environment variable set
+  if (process.env.XPANDER_CURRENT_PROFILE) {
+    return process.env.XPANDER_CURRENT_PROFILE;
+  }
+
+  // Check if there's a default profile set in the credentials file
+  const creds = parseCredsFile(CREDS_FILE);
+  if (creds[DEFAULT_SECTION] && creds[DEFAULT_SECTION].default_profile) {
+    return creds[DEFAULT_SECTION].default_profile;
+  }
+
+  // Fall back to the config file
   const config = readConfigFile(CONFIG_FILE);
   return config.current_profile || DEFAULT_PROFILE;
 }
@@ -302,4 +318,29 @@ export function deleteProfile(profileName: string): void {
     config.current_profile = DEFAULT_PROFILE;
     saveConfigFile(CONFIG_FILE, config);
   }
+}
+
+/**
+ * Set the default profile in the credentials file
+ */
+export function setDefaultProfile(profileName: string): void {
+  ensureConfigDirExists();
+
+  // Ensure the profile exists
+  const creds = parseCredsFile(CREDS_FILE);
+  if (!creds[profileName]) {
+    throw new Error(`Profile "${profileName}" does not exist`);
+  }
+
+  // Create or update the DEFAULT_SECTION
+  if (!creds[DEFAULT_SECTION]) {
+    creds[DEFAULT_SECTION] = {};
+  }
+
+  // Set the default profile
+  creds[DEFAULT_SECTION].default_profile = profileName;
+  saveCredsFile(CREDS_FILE, creds);
+
+  // Also update the current profile in the config file for backward compatibility
+  setCurrentProfile(profileName);
 }

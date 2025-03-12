@@ -14,7 +14,6 @@ import {
   getOrganizationId,
   getCurrentProfile,
   setPreferredFormat,
-  setCurrentProfile,
   listProfiles,
 } from './utils/config';
 
@@ -95,10 +94,7 @@ async function showProfileInfo() {
   // We're removing the message about multiple profiles to make the output more concise
 }
 
-async function main() {
-  // Display the CLI banner
-  displayBanner();
-
+async function main(): Promise<void> {
   // Check if this is just 'xpander' with no args or options
   const hasArgs = process.argv.length > 2;
   const isHelpCommand =
@@ -107,6 +103,31 @@ async function main() {
     process.argv.includes('--version') ||
     process.argv.includes('-V') ||
     process.argv.includes('-v');
+
+  // Check if we're setting the default profile
+  const isSettingDefaultProfile =
+    process.argv.includes('profile') && process.argv.includes('--set-default');
+
+  // Process profile option first, before displaying banner
+  const profileArg = process.argv.findIndex((arg) => arg === '--profile');
+  if (profileArg !== -1 && profileArg + 1 < process.argv.length) {
+    const profileName = process.argv[profileArg + 1];
+    const availableProfiles = listProfiles();
+    if (availableProfiles.includes(profileName)) {
+      process.env.XPANDER_CURRENT_PROFILE = profileName;
+    }
+  }
+
+  // Display the CLI banner, but skip if we're just setting the default profile
+  if (!isSettingDefaultProfile) {
+    displayBanner();
+  }
+
+  // Display the version information if the -v flag is provided
+  if (process.argv.includes('-v') || process.argv.includes('--version')) {
+    // The version is already displayed in the banner, so we don't need to print it again
+    process.exit(0);
+  }
 
   // If just 'xpander' is run with no args, check if logged in
   if (
@@ -122,8 +143,21 @@ async function main() {
         console.log('');
         await showProfileInfo();
 
-        // Don't show available commands and usage - keep it concise
-        // Return instead of continuing to avoid showing usage
+        // Initialize program to show help content
+        const program = new Command('xpander')
+          .version(version, '-v, --version', 'Output the version number')
+          .description('Xpander.ai CLI for managing AI agents')
+          .option('--output <format>', 'Output format (json, table)', 'table')
+          .option('--profile <n>', 'Profile to use (default: current profile)')
+          .addHelpCommand();
+
+        // Register commands for help display
+        configureConfigureCommand(program);
+        agent(program);
+
+        console.log('');
+        program.outputHelp();
+
         return;
       }
     } else if (!hasArgs) {
@@ -132,26 +166,33 @@ async function main() {
       console.log('');
       await showProfileInfo();
 
-      // Keep it concise - don't show available commands and usage
+      // Initialize program to show help content
+      const program = new Command('xpander')
+        .version(version, '-v, --version', 'Output the version number')
+        .description('Xpander.ai CLI for managing AI agents')
+        .option('--output <format>', 'Output format (json, table)', 'table')
+        .option('--profile <n>', 'Profile to use (default: current profile)')
+        .addHelpCommand();
+
+      // Register commands for help display
+      configureConfigureCommand(program);
+      agent(program);
+
+      console.log('');
+      program.outputHelp();
+
       return;
     }
   }
 
-  // Common code to handle version display
-  if (process.argv.includes('-v')) {
-    console.log(version);
-    process.exit(0);
-  }
-
   // Initialize the CLI program
   const program = new Command('xpander')
-    .version(version, '-V, --version', 'Output the version number')
+    .version(version, '-v, --version', 'Output the version number')
     .description('Xpander.ai CLI for managing AI agents')
-    .option('-v', 'Output the version number (alias for -V)')
     .option('--output <format>', 'Output format (json, table)', 'table')
-    .option('--profile <name>', 'Profile to use (default: current profile)')
+    .option('--profile <n>', 'Profile to use (default: current profile)')
     .addHelpCommand()
-    .hook('preAction', (_thisCommand) => {
+    .hook('preAction', () => {
       // Get options from the root command (global options)
       const globalOptions = program.opts();
 
@@ -159,7 +200,8 @@ async function main() {
       if (globalOptions.profile) {
         const availableProfiles = listProfiles();
         if (availableProfiles.includes(globalOptions.profile)) {
-          setCurrentProfile(globalOptions.profile);
+          // We set it but we don't save it to config, just for this command execution
+          process.env.XPANDER_CURRENT_PROFILE = globalOptions.profile;
         } else {
           console.error(
             chalk.red(`Profile "${globalOptions.profile}" does not exist.`),
@@ -189,10 +231,13 @@ async function main() {
   configureConfigureCommand(program);
   agent(program);
 
-  await program.parseAsync(process.argv);
-
-  // Explicitly set exit code to 0 for successful completion
-  process.exitCode = 0;
+  try {
+    await program.parseAsync(process.argv);
+    process.exit(0);
+  } catch (err) {
+    console.error(chalk.red(err));
+    process.exit(1);
+  }
 }
 
 main().catch((error) => {

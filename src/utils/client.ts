@@ -19,7 +19,7 @@ export class XpanderClient {
     this.orgId = orgId || getOrganizationId(profile) || null;
     this.currentProfile = profile;
 
-    // Create Axios client with the base URL
+    // Create Axios client with the base URL and headers
     this.client = axios.create({
       baseURL: this.baseUrl,
       headers: {
@@ -139,13 +139,6 @@ export class XpanderClient {
    */
   async getAgents(): Promise<Agent[]> {
     try {
-      // Create a single, clean message that includes the organization ID if available
-      if (this.orgId) {
-        console.log(`Fetching agents for organization: ${this.orgId}`);
-      } else {
-        console.log(`Fetching agents...`);
-      }
-
       // Use the verified working endpoint from our testing
       const url = `/v1/agents/list`;
       const response = await this.client.get(url);
@@ -181,27 +174,40 @@ export class XpanderClient {
    */
   async getAgent(agentId: string): Promise<Agent | null> {
     try {
-      // Use the same URL pattern that worked for listing agents
-      console.log(`Fetching agent ${agentId}`);
-      const url = `/v1/agents/${agentId}`;
-      const response = await this.client.get(url);
-      return response.data;
-    } catch (error: any) {
-      if (error.code === 'ERR_INVALID_URL') {
-        console.log('Error: Invalid URL for agent details.');
+      // Reduce console output - make it less verbose
+      // Use quieter approach for log messages during agent retrieval
+
+      // Use the getAgents method to fetch all agents
+      const agents = await this.getAgents();
+
+      // Find the specific agent by ID
+      const foundAgent = agents.find((a) => a.id === agentId);
+
+      if (!foundAgent) {
         return null;
-      } else if (error.response) {
-        console.error(
-          `API Error (${error.response.status}): ${
-            error.response.data?.message || 'Unknown error'
-          }`,
-        );
-      } else {
-        console.error(
-          'Error retrieving agent details:',
-          error.message || error,
-        );
       }
+
+      // For backward compatibility, ensure all expected fields are present
+      // This helps ensure the agent details are properly displayed
+      const enhancedAgent: Agent = {
+        ...foundAgent,
+        // Add any missing fields with default values
+        type: foundAgent.type || 'regular',
+        status: foundAgent.status || 'ACTIVE',
+        tools: foundAgent.tools || [],
+        version: foundAgent.version || 1,
+        organization_id: foundAgent.organization_id || this.orgId || '',
+        model_provider: foundAgent.model_provider || 'openai',
+        model_name: foundAgent.model_name || 'gpt-4',
+        // Add other fields as needed
+      };
+
+      return enhancedAgent;
+    } catch (error: any) {
+      console.error(
+        chalk.red('Error retrieving agent details:'),
+        error.message || error,
+      );
       return null;
     }
   }
@@ -211,40 +217,46 @@ export class XpanderClient {
    */
   async createAgent(name: string): Promise<Agent> {
     try {
-      // Ensure we have an organization ID
-      const hasOrgId = await this.ensureOrganizationId();
-
-      if (!hasOrgId) {
+      if (this.orgId) {
+        // Reduce verbosity - use more subtle indication
         console.log(
-          chalk.red(
-            'ERROR: No organization ID available. Cannot create agent.',
-          ),
+          chalk.dim(`Creating agent in organization: ${this.orgId}...`),
         );
-        console.log(
-          chalk.yellow(
-            'An organization ID is REQUIRED for all API operations.',
-          ),
-        );
-        console.log(chalk.yellow('Set your organization ID with:'));
-        console.log(
-          chalk.blue('  xpander configure --org YOUR_ORGANIZATION_ID'),
-        );
-        throw new Error('Organization ID is required to create an agent');
       }
 
-      console.log(`Creating agent for organization: ${this.orgId}...`);
-      const url = `/${this.orgId}/agents-crud/tools/crud/create`;
-      const response = await this.client.post(url, { name: name });
+      const url = '/agents-crud/tools/crud/create';
+
+      // Prepare request payload
+      const payload = {
+        name,
+        ...(this.orgId ? { organization_id: this.orgId } : {}),
+      };
+
+      const config = {
+        method: 'POST',
+        url: `${this.baseUrl}${url}`,
+        headers: {
+          'x-api-key': this.client.defaults.headers['x-api-key'],
+          'Content-Type': 'application/json',
+        },
+        data: payload,
+      };
+
+      const response = await axios(config);
       return response.data;
     } catch (error: any) {
+      console.error(chalk.red('\n❌ Failed to create agent:'));
       if (error.response) {
+        console.error(chalk.red(`Error code: ${error.response.status}`));
         console.error(
-          `API Error (${error.response.status}): ${
-            error.response.data?.message || 'Unknown error'
-          }`,
+          chalk.red(
+            `Message: ${error.response.data?.message || 'Unknown error'}`,
+          ),
         );
+      } else if (error.request) {
+        console.error(chalk.red('No response received from server'));
       } else {
-        console.error('Error creating agent:', error.message || error);
+        console.error(chalk.red(error.message || 'Unknown error occurred'));
       }
       throw new Error('Failed to create agent');
     }
@@ -255,36 +267,45 @@ export class XpanderClient {
    */
   async deleteAgent(agentId: string): Promise<boolean> {
     try {
-      // Ensure we have an organization ID
-      const hasOrgId = await this.ensureOrganizationId();
-
-      if (!hasOrgId) {
+      if (this.orgId) {
         console.log(
-          'Warning: No organization ID available. Cannot delete agent.',
+          `Deleting agent ${agentId} from organization: ${this.orgId}...`,
         );
-        return false;
       }
+      const url = '/agents-crud/tools/crud/delete';
 
-      console.log(
-        `Deleting agent ${agentId} from organization: ${this.orgId}...`,
-      );
-      const url = `/${this.orgId}/agents/${agentId}`;
-      await this.client.delete(url);
+      // Prepare request payload
+      const payload = {
+        agent_id: agentId,
+        ...(this.orgId ? { organization_id: this.orgId } : {}),
+      };
+
+      const config = {
+        method: 'POST',
+        url: `${this.baseUrl}${url}`,
+        headers: {
+          'x-api-key': this.client.defaults.headers['x-api-key'],
+          'Content-Type': 'application/json',
+        },
+        data: payload,
+      };
+
+      await axios(config);
       return true;
     } catch (error: any) {
       if (error.response) {
+        console.error(chalk.red(`Status: ${error.response.status}`));
         console.error(
-          `API Error (${error.response.status}): ${
-            error.response.data?.message || 'Unknown error'
-          }`,
+          chalk.red(
+            `Message: ${error.response.data?.message || 'Unknown error'}`,
+          ),
         );
+      } else if (error.request) {
+        console.error(chalk.red('No response received from server'));
       } else {
-        console.error(
-          `Error deleting agent ${agentId}:`,
-          error.message || error,
-        );
+        console.error(chalk.red(error.message || 'Unknown error occurred'));
       }
-      return false;
+      throw new Error('Failed to delete agent');
     }
   }
 
@@ -296,35 +317,67 @@ export class XpanderClient {
     data: Partial<Agent>,
   ): Promise<Agent | null> {
     try {
-      // Ensure we have an organization ID
-      const hasOrgId = await this.ensureOrganizationId();
+      // First, verify that the agent exists before attempting update
+      // Make verification step more subtle
+      const agentExists = await this.getAgent(agentId);
 
-      if (!hasOrgId) {
-        console.log(
-          'Warning: No organization ID available. Cannot update agent.',
+      if (!agentExists) {
+        console.error(
+          chalk.red(`Agent with ID ${agentId} not found. Cannot update.`),
         );
         return null;
       }
 
-      console.log(
-        `Updating agent ${agentId} in organization: ${this.orgId}...`,
-      );
-      const url = `/${this.orgId}/agents/${agentId}`;
-      const response = await this.client.put(url, data);
+      if (this.orgId) {
+        // Make this log subtle
+        console.log(chalk.dim(`Updating agent details...`));
+      }
+
+      // Format for the update endpoint
+      const url = `/agents-crud/tools/crud/update`;
+
+      // Prepare request payload
+      // Make sure organization_id is always included and format data correctly
+      const payload = {
+        agent_id: agentId,
+        organization_id: this.orgId,
+        ...data,
+      };
+
+      // Reduce payload logging to be less verbose
+      console.log(chalk.dim('Sending update request...'));
+
+      const config = {
+        method: 'PATCH',
+        url: `${this.baseUrl}${url}`,
+        headers: {
+          'x-api-key': this.client.defaults.headers['x-api-key'],
+          'Content-Type': 'application/json',
+        },
+        data: payload,
+      };
+
+      const response = await axios(config);
+
+      // Don't log the entire response
       return response.data;
     } catch (error: any) {
+      console.error(chalk.red('Failed to update agent:'));
+
       if (error.response) {
+        console.error(chalk.red(`Error code: ${error.response.status}`));
         console.error(
-          `API Error (${error.response.status}): ${
-            error.response.data?.message || 'Unknown error'
-          }`,
+          chalk.red(
+            `Message: ${JSON.stringify(error.response.data) || 'Unknown error'}`,
+          ),
         );
+      } else if (error.request) {
+        console.error(chalk.red('No response received from server'));
       } else {
-        console.error(
-          `Error updating agent ${agentId}:`,
-          error.message || error,
-        );
+        console.error(chalk.red(error.message || 'Unknown error occurred'));
       }
+
+      // Return null instead of throwing to better handle the error at the command level
       return null;
     }
   }
@@ -362,6 +415,53 @@ export class XpanderClient {
         );
       }
       return false;
+    }
+  }
+
+  /**
+   * Deploys an agent
+   */
+  async deployAgent(agentId: string): Promise<boolean> {
+    try {
+      if (this.orgId) {
+        console.log(
+          chalk.dim(`Deploying agent to organization: ${this.orgId}...`),
+        );
+      }
+      const url = '/agents-crud/tools/crud/deploy';
+
+      // Prepare request payload
+      const payload = {
+        agent_id: agentId,
+        ...(this.orgId ? { organization_id: this.orgId } : {}),
+      };
+
+      const config = {
+        method: 'PUT',
+        url: `${this.baseUrl}${url}`,
+        headers: {
+          'x-api-key': this.client.defaults.headers['x-api-key'],
+          'Content-Type': 'application/json',
+        },
+        data: payload,
+      };
+
+      await axios(config);
+      return true;
+    } catch (error: any) {
+      if (error.response) {
+        console.error(chalk.red(`Status: ${error.response.status}`));
+        console.error(
+          chalk.red(
+            `Message: ${error.response.data?.message || 'Unknown error'}`,
+          ),
+        );
+      } else if (error.request) {
+        console.error(chalk.red('No response received from server'));
+      } else {
+        console.error(chalk.red(error.message || 'Unknown error occurred'));
+      }
+      throw new Error('Failed to deploy agent');
     }
   }
 }

@@ -12,6 +12,7 @@ export interface Agent {
   active?: boolean; // Whether the agent is active
   version?: number;
   config?: any;
+  icon?: string; // Icon (emoji) for the agent
   instructions?: {
     role?: string;
     goal?: string;
