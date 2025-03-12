@@ -139,13 +139,6 @@ export class XpanderClient {
    */
   async getAgents(): Promise<Agent[]> {
     try {
-      // Create a single, clean message that includes the organization ID if available
-      if (this.orgId) {
-        console.log(`Fetching agents for organization: ${this.orgId}`);
-      } else {
-        console.log(`Fetching agents...`);
-      }
-
       // Use the verified working endpoint from our testing
       const url = `/v1/agents/list`;
       const response = await this.client.get(url);
@@ -432,7 +425,7 @@ export class XpanderClient {
     try {
       if (this.orgId) {
         console.log(
-          `Deploying agent ${agentId} in organization: ${this.orgId}...`,
+          chalk.dim(`Deploying agent to organization: ${this.orgId}...`),
         );
       }
       const url = '/agents-crud/tools/crud/deploy';
@@ -454,7 +447,6 @@ export class XpanderClient {
       };
 
       await axios(config);
-      console.log(chalk.green('\n✨ Agent deployed successfully!\n'));
       return true;
     } catch (error: any) {
       if (error.response) {

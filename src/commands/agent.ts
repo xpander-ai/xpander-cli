@@ -7,6 +7,30 @@ import { getOrganizationId, getApiKey } from '../utils/config';
 import { formatOutput } from '../utils/formatter';
 
 /**
+ * Helper function to colorize agent status
+ */
+function colorizeStatus(status?: string): string {
+  if (!status) return chalk.gray('Unknown');
+
+  const statusUpper = status.toUpperCase();
+
+  switch (statusUpper) {
+    case 'ACTIVE':
+      return chalk.green(statusUpper);
+    case 'INACTIVE':
+      return chalk.yellow(statusUpper);
+    case 'DELETED':
+      return chalk.red(statusUpper);
+    case 'SUSPENDED':
+      return chalk.red(statusUpper);
+    case 'PENDING':
+      return chalk.blue(statusUpper);
+    default:
+      return chalk.white(statusUpper);
+  }
+}
+
+/**
  * Configure agent-related commands
  */
 export function agent(program: Command): void {
@@ -23,13 +47,21 @@ export function agent(program: Command): void {
     )
     .action(async (cmdOptions) => {
       try {
-        const client = createClient();
+        // Create a spinner for better visual feedback
+        const spinner = process.stdout.isTTY
+          ? ora({
+              text: chalk.blue('Fetching your agents...'),
+              spinner: 'dots',
+            }).start()
+          : { succeed: console.log, fail: console.error, stop: () => {} };
 
-        // Instead of using client.get directly, use the getAgents method from XpanderClient
+        const client = createClient();
         const agents = await client.getAgents();
 
+        spinner.stop();
+
         if (agents.length === 0) {
-          console.log(chalk.yellow('No agents found.'));
+          console.log('\n' + chalk.yellow('✨ No agents found.'));
           return;
         }
 
@@ -44,9 +76,10 @@ export function agent(program: Command): void {
 
           if (filteredAgents.length === 0) {
             console.log(
-              chalk.yellow(
-                `No agents found with ID matching "${cmdOptions.filterId}"`,
-              ),
+              '\n' +
+                chalk.yellow(
+                  `No agents found with ID matching "${cmdOptions.filterId}"`,
+                ),
             );
             return;
           }
@@ -77,16 +110,22 @@ export function agent(program: Command): void {
           // For JSON output, return all raw data without filtering
           console.log(JSON.stringify(filteredAgents, null, 2));
         } else {
+          console.log('\n');
+          console.log(chalk.bold.blue('🤖 Your Agents'));
+          console.log(chalk.dim('─'.repeat(50)));
+
           // For table output, use the formatted data with specific columns
           formatOutput(formattedAgents, {
-            title:
-              filteredAgents.length === 1 ? 'Agent Details' : 'Your Agents',
+            title: '', // Remove title as we're adding our own
             columns: ['id', 'name', 'model', 'tools_count', 'created_at'],
             headers: ['ID', 'Name', 'Model', 'Tools', 'Created'],
           });
+
+          console.log(chalk.dim('─'.repeat(50)));
+          console.log(chalk.cyan(`Total agents: ${filteredAgents.length}`));
         }
       } catch (error: any) {
-        console.error(chalk.red('Error:'), error.message);
+        console.error(chalk.red('\n❌ Error:'), error.message);
       }
     });
 
@@ -143,7 +182,7 @@ export function agent(program: Command): void {
         if (!orgId) {
           console.error(
             chalk.red(
-              'Organization ID not set. Run "xpander configure --org YOUR_ORG_ID" first.',
+              '❌ Organization ID not set. Run "xpander configure --org YOUR_ORG_ID" first.',
             ),
           );
           return;
@@ -153,21 +192,30 @@ export function agent(program: Command): void {
 
         // If no ID provided, prompt user to select from available agents
         if (!agentId) {
-          console.log(
-            chalk.blue(`Fetching agents for organization ID: ${orgId}`),
-          );
+          // Create a spinner for better visual feedback
+          const loadingSpinner = process.stdout.isTTY
+            ? ora({
+                text: chalk.blue('Loading available agents...'),
+                spinner: 'dots',
+              }).start()
+            : { succeed: console.log, fail: console.error, stop: () => {} };
 
           const client = createClient();
-          // Instead of using client.get directly, use the getAgents method from XpanderClient
           const agents = await client.getAgents();
 
+          loadingSpinner.stop();
+
           if (agents.length === 0) {
-            console.log(chalk.yellow('No agents found.'));
+            console.log('\n' + chalk.yellow('✨ No agents found.'));
             return;
           }
 
+          console.log('\n');
+          console.log(chalk.bold.blue('🔍 Select an Agent'));
+          console.log(chalk.dim('─'.repeat(50)));
+
           const choices = agents.map((agentItem) => ({
-            name: `${agentItem.name} (${agentItem.id})`,
+            name: `${agentItem.name} ${chalk.dim(`(${agentItem.id})`)}`,
             value: agentItem.id,
           }));
 
@@ -175,22 +223,32 @@ export function agent(program: Command): void {
             {
               type: 'list',
               name: 'agentId',
-              message: 'Select an agent:',
+              message: 'Which agent would you like to view?',
               choices,
+              pageSize: 15,
             },
           ]);
 
           agentId = answers.agentId;
         }
 
-        console.log(chalk.blue(`Fetching details for agent: ${agentId}`));
+        // Create a spinner for better visual feedback
+        const spinner = process.stdout.isTTY
+          ? ora({
+              text: chalk.blue(`Fetching agent details...`),
+              spinner: 'dots',
+            }).start()
+          : { succeed: console.log, fail: console.error, stop: () => {} };
 
         const client = createClient();
-        // Instead of using client.get directly, use the getAgent method from XpanderClient
         const agentData = await client.getAgent(agentId);
 
+        spinner.stop();
+
         if (!agentData) {
-          console.log(chalk.yellow(`Agent with ID ${agentId} not found.`));
+          console.log(
+            '\n' + chalk.yellow(`⚠️ Agent with ID ${agentId} not found.`),
+          );
           return;
         }
 
@@ -201,27 +259,38 @@ export function agent(program: Command): void {
         }
 
         // For table output, show a more human-readable format
+        console.log('\n');
+        console.log(chalk.bold.blue(`🤖 Agent Details`));
+        console.log(chalk.dim('─'.repeat(50)));
+
         // Display the agent details in a structured way
-        console.log(chalk.bold('\nAgent Details:'));
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log(`${chalk.bold('Name:')}        ${agentData.name}`);
-        console.log(`${chalk.bold('ID:')}          ${agentData.id}`);
-        console.log(`${chalk.bold('Status:')}      ${agentData.status}`);
-        console.log(`${chalk.bold('Type:')}        ${agentData.type}`);
+        console.log(chalk.bold('Name:     ') + chalk.cyan(agentData.name));
+        console.log(chalk.bold('ID:       ') + chalk.dim(agentData.id));
         console.log(
-          `${chalk.bold('Model:')}       ${agentData.model_provider} / ${agentData.model_name}`,
+          chalk.bold('Status:   ') + colorizeStatus(agentData.status),
         );
-        console.log(`${chalk.bold('Version:')}     ${agentData.version}`);
+        console.log(chalk.bold('Type:     ') + chalk.white(agentData.type));
         console.log(
-          `${chalk.bold('Tools:')}       ${agentData.tools?.length || 0}`,
+          chalk.bold('Model:    ') +
+            chalk.yellow(`${agentData.model_provider}/${agentData.model_name}`),
+        );
+        console.log(
+          chalk.bold('Version:  ') +
+            chalk.white(agentData.version?.toString() || '1'),
+        );
+        console.log(
+          chalk.bold('Tools:    ') +
+            chalk.white(`${agentData.tools?.length || 0}`),
         );
 
         if ('icon' in agentData && agentData.icon) {
-          console.log(`${chalk.bold('Icon:')}        ${agentData.icon}`);
+          console.log(chalk.bold('Icon:     ') + agentData.icon);
         }
+
         if (agentData.description) {
-          console.log(`${chalk.bold('Description:')} ${agentData.description}`);
+          console.log(chalk.bold('Description: ') + agentData.description);
         }
+
         if (agentData.created_at) {
           let createdDate = '';
           try {
@@ -229,31 +298,40 @@ export function agent(program: Command): void {
           } catch (e) {
             createdDate = agentData.created_at;
           }
-          console.log(`${chalk.bold('Created:')}     ${createdDate}`);
+          console.log(chalk.bold('Created:  ') + chalk.white(createdDate));
         }
 
         // Show instructions if available
-        if (agentData.instructions) {
-          console.log(`\n${chalk.bold('Instructions:')}`);
+        if (
+          agentData.instructions &&
+          (agentData.instructions.role ||
+            agentData.instructions.goal ||
+            agentData.instructions.general)
+        ) {
+          console.log('\n' + chalk.bold('Instructions:'));
+
           if (agentData.instructions.role) {
             console.log(
-              `${chalk.bold('Role:')}     ${agentData.instructions.role}`,
+              chalk.bold('• Role:    ') + agentData.instructions.role,
             );
           }
+
           if (agentData.instructions.goal) {
             console.log(
-              `${chalk.bold('Goal:')}     ${agentData.instructions.goal}`,
+              chalk.bold('• Goal:    ') + agentData.instructions.goal,
             );
           }
+
           if (agentData.instructions.general) {
             console.log(
-              `${chalk.bold('General:')}  ${agentData.instructions.general}`,
+              chalk.bold('• General: ') + agentData.instructions.general,
             );
           }
         }
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+        console.log(chalk.dim('─'.repeat(50)));
       } catch (error: any) {
-        console.error(chalk.red('Error:'), error.message);
+        console.error(chalk.red('\n❌ Error:'), error.message);
       }
     });
 
@@ -505,64 +583,113 @@ export function agent(program: Command): void {
 
         // If no ID provided, prompt user to select from available agents
         if (!agentId) {
+          // Create a spinner for better visual feedback
+          const loadingSpinner = process.stdout.isTTY
+            ? ora({
+                text: chalk.blue('Loading available agents...'),
+                spinner: 'dots',
+              }).start()
+            : { succeed: console.log, fail: console.error, stop: () => {} };
+
           const client = createClient();
-          // Instead of using client.get directly, use the getAgents method from XpanderClient
           const agents = await client.getAgents();
 
+          loadingSpinner.stop();
+
           if (agents.length === 0) {
-            console.log(chalk.yellow('No agents found.'));
+            console.log('\n' + chalk.yellow('✨ No agents found.'));
             return;
           }
 
+          console.log('\n');
+          console.log(chalk.bold.red('⚠️ Delete Agent'));
+          console.log(chalk.dim('─'.repeat(50)));
+          console.log(
+            chalk.yellow('Please select the agent you wish to delete:'),
+          );
+
           const choices = agents.map((agentItem) => ({
-            name: `${agentItem.name} (${agentItem.id})`,
-            value: agentItem.id,
+            name: `${agentItem.name} ${chalk.dim(`(${agentItem.id})`)}`,
+            value: (agentId = agentItem.id),
           }));
 
           const answers = await inquirer.prompt([
             {
               type: 'list',
               name: 'agentId',
-              message: 'Select an agent to delete:',
+              message: 'Which agent would you like to delete?',
               choices,
+              pageSize: 15,
             },
           ]);
 
           agentId = answers.agentId;
         }
 
+        // Get agent details for confirmation
+        const client = createClient();
+        const agentData = await client.getAgent(agentId);
+
+        if (!agentData) {
+          console.log(
+            '\n' + chalk.yellow(`⚠️ Agent with ID ${agentId} not found.`),
+          );
+          return;
+        }
+
+        // Show warning with agent details
+        console.log('\n');
+        console.log(chalk.bold.red('🗑️ Delete Confirmation'));
+        console.log(chalk.dim('─'.repeat(50)));
+        console.log(
+          chalk.yellow('You are about to delete the following agent:'),
+        );
+        console.log('\n');
+        console.log(chalk.bold('Name:     ') + chalk.cyan(agentData.name));
+        console.log(chalk.bold('ID:       ') + chalk.dim(agentData.id));
+        if ('icon' in agentData && agentData.icon) {
+          console.log(chalk.bold('Icon:     ') + agentData.icon);
+        }
+        console.log('\n');
+        console.log(chalk.red('⚠️ This action cannot be undone!'));
+        console.log(chalk.dim('─'.repeat(50)));
+
         // Confirm deletion
         const confirmation = await inquirer.prompt([
           {
             type: 'confirm',
             name: 'confirmed',
-            message: `Are you sure you want to delete agent ${agentId}?`,
+            message: `Are you sure you want to permanently delete this agent?`,
             default: false,
           },
         ]);
 
         if (!confirmation.confirmed) {
-          console.log(chalk.blue('Operation cancelled.'));
+          console.log(
+            chalk.blue('\n✓ Operation cancelled. Agent was not deleted.'),
+          );
           return;
         }
 
-        console.log(chalk.blue(`Deleting agent: ${agentId}`));
+        // Create a spinner for deletion
+        const spinner = process.stdout.isTTY
+          ? ora({
+              text: chalk.blue(`Deleting agent...`),
+              spinner: 'dots',
+            }).start()
+          : { succeed: console.log, fail: console.error, stop: () => {} };
 
-        const client = createClient();
-        // Instead of deleting with an API call, use the deleteAgent method from XpanderClient
         const success = await client.deleteAgent(agentId);
 
         if (success) {
-          console.log(chalk.green(`Agent ${agentId} deleted successfully!`));
+          spinner.succeed(chalk.green(`Agent deleted successfully!`));
         } else {
-          console.log(
-            chalk.yellow(
-              `Could not delete agent ${agentId}. Please try again.`,
-            ),
+          spinner.fail(
+            chalk.yellow(`Could not delete agent. Please try again.`),
           );
         }
       } catch (error: any) {
-        console.error(chalk.red('Error:'), error.message);
+        console.error(chalk.red('\n❌ Error:'), error.message);
       }
     });
 
@@ -577,16 +704,30 @@ export function agent(program: Command): void {
 
         // If no ID provided, prompt user to select from available agents
         if (!agentId) {
+          // Create a spinner for better visual feedback
+          const loadingSpinner = process.stdout.isTTY
+            ? ora({
+                text: chalk.blue('Loading available agents...'),
+                spinner: 'dots',
+              }).start()
+            : { succeed: console.log, fail: console.error, stop: () => {} };
+
           const client = createClient();
           const agents = await client.getAgents();
 
+          loadingSpinner.stop();
+
           if (agents.length === 0) {
-            console.log(chalk.yellow('No agents found.'));
+            console.log('\n' + chalk.yellow('✨ No agents found.'));
             return;
           }
 
+          console.log('\n');
+          console.log(chalk.bold.blue('✏️ Update Agent'));
+          console.log(chalk.dim('─'.repeat(50)));
+
           const choices = agents.map((agentItem) => ({
-            name: `${agentItem.name} (${agentItem.id})`,
+            name: `${agentItem.name} ${chalk.dim(`(${agentItem.id})`)}`,
             value: agentItem.id,
           }));
 
@@ -594,71 +735,105 @@ export function agent(program: Command): void {
             {
               type: 'list',
               name: 'agentId',
-              message: 'Select an agent to update:',
+              message: 'Which agent would you like to update?',
               choices,
+              pageSize: 15,
             },
           ]);
 
           agentId = answers.agentId;
         }
 
-        console.log(chalk.blue(`Fetching agent with ID: ${agentId}`));
+        // Create a spinner for better visual feedback
+        const spinner = process.stdout.isTTY
+          ? ora({
+              text: chalk.blue(`Fetching agent details...`),
+              spinner: 'dots',
+            }).start()
+          : { succeed: console.log, fail: console.error, stop: () => {} };
+
         const client = createClient();
         const existingAgent = await client.getAgent(agentId);
 
+        spinner.stop();
+
         if (!existingAgent) {
-          console.log(chalk.yellow(`Agent with ID ${agentId} not found.`));
+          console.log(
+            '\n' + chalk.yellow(`⚠️ Agent with ID ${agentId} not found.`),
+          );
           return;
         }
 
         // Show current agent details
-        console.log(chalk.bold('\nCurrent Agent Details:'));
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log(`${chalk.bold('Name:')}        ${existingAgent.name}`);
-        console.log(`${chalk.bold('ID:')}          ${existingAgent.id}`);
-        console.log(`${chalk.bold('Status:')}      ${existingAgent.status}`);
-        console.log(`${chalk.bold('Type:')}        ${existingAgent.type}`);
+        console.log('\n');
+        console.log(chalk.bold.blue('🤖 Current Agent Details'));
+        console.log(chalk.dim('─'.repeat(50)));
+
+        console.log(chalk.bold('Name:     ') + chalk.cyan(existingAgent.name));
+        console.log(chalk.bold('ID:       ') + chalk.dim(existingAgent.id));
         console.log(
-          `${chalk.bold('Model:')}       ${existingAgent.model_provider} / ${existingAgent.model_name}`,
+          chalk.bold('Status:   ') + colorizeStatus(existingAgent.status),
         );
+        console.log(chalk.bold('Type:     ') + chalk.white(existingAgent.type));
+        console.log(
+          chalk.bold('Model:    ') +
+            chalk.yellow(
+              `${existingAgent.model_provider}/${existingAgent.model_name}`,
+            ),
+        );
+
         if ('icon' in existingAgent && existingAgent.icon) {
-          console.log(`${chalk.bold('Icon:')}        ${existingAgent.icon}`);
+          console.log(chalk.bold('Icon:     ') + existingAgent.icon);
         }
+
         if (existingAgent.description) {
-          console.log(
-            `${chalk.bold('Description:')} ${existingAgent.description}`,
-          );
+          console.log(chalk.bold('Description: ') + existingAgent.description);
         }
-        if (existingAgent.instructions) {
-          console.log(`\n${chalk.bold('Current Instructions:')}`);
+
+        // Show instructions if available
+        if (
+          existingAgent.instructions &&
+          (existingAgent.instructions.role ||
+            existingAgent.instructions.goal ||
+            existingAgent.instructions.general)
+        ) {
+          console.log('\n' + chalk.bold('Current Instructions:'));
+
           if (existingAgent.instructions.role) {
             console.log(
-              `${chalk.bold('Role:')}     ${existingAgent.instructions.role}`,
+              chalk.bold('• Role:    ') + existingAgent.instructions.role,
             );
           }
+
           if (existingAgent.instructions.goal) {
             console.log(
-              `${chalk.bold('Goal:')}     ${existingAgent.instructions.goal}`,
+              chalk.bold('• Goal:    ') + existingAgent.instructions.goal,
             );
           }
+
           if (existingAgent.instructions.general) {
             console.log(
-              `${chalk.bold('General:')}  ${existingAgent.instructions.general}`,
+              chalk.bold('• General: ') + existingAgent.instructions.general,
             );
           }
         }
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+        console.log(chalk.dim('─'.repeat(50)));
+        console.log('\n');
 
         // Ask how to edit instructions
+        console.log(chalk.bold.blue('🪄 Update Agent Details'));
+        console.log(chalk.dim('─'.repeat(50)));
+
         const editMethod = await inquirer.prompt([
           {
             type: 'list',
             name: 'method',
-            message: 'How would you like to edit the instructions?',
+            message: 'How would you like to edit the agent details?',
             choices: [
-              { name: 'Inline (one field at a time)', value: 'inline' },
+              { name: 'Inline (field by field)', value: 'inline' },
               {
-                name: 'Text editor (edit all fields at once)',
+                name: 'Text editor (all fields at once)',
                 value: 'editor',
               },
             ],
@@ -676,25 +851,25 @@ export function agent(program: Command): void {
             {
               type: 'input',
               name: 'icon',
-              message: 'Choose an icon for your agent (emoji):',
+              message: 'Choose an icon for your agent:',
               default: existingAgent.icon || '🤖',
             },
             {
               type: 'input',
               name: 'roleInstructions',
-              message: 'Enter role instructions:',
+              message: 'What role should your agent perform?',
               default: existingAgent.instructions?.role || '',
             },
             {
               type: 'input',
               name: 'goalInstructions',
-              message: 'Enter goal instructions:',
+              message: 'What is the main goal of your agent?',
               default: existingAgent.instructions?.goal || '',
             },
             {
               type: 'input',
               name: 'generalInstructions',
-              message: 'Enter general instructions:',
+              message: 'Any additional instructions for your agent?',
               default: existingAgent.instructions?.general || '',
             },
           ]);
@@ -719,11 +894,10 @@ export function agent(program: Command): void {
             },
           };
 
-          console.log(chalk.blue('Opening text editor for agent details...'));
+          console.log(chalk.blue('Opening your text editor...'));
           console.log(
-            chalk.yellow('Current instructions being loaded in editor:'),
+            chalk.dim('Current settings will be pre-loaded in the editor'),
           );
-          console.log(JSON.stringify(currentInstructions, null, 2));
 
           const editorContent = await inquirer.prompt([
             {
@@ -736,10 +910,19 @@ export function agent(program: Command): void {
           ]);
 
           try {
+            // Create a spinner for better visual feedback during parsing
+            const parsingSpinner = process.stdout.isTTY
+              ? ora({
+                  text: chalk.blue('Processing editor content...'),
+                  spinner: 'dots',
+                }).start()
+              : { succeed: console.log, fail: console.error, stop: () => {} };
+
             // Parse the JSON from the editor
-            console.log('Received content from editor, parsing JSON...');
             const editorData = JSON.parse(editorContent.content);
-            console.log('Successfully parsed JSON from editor');
+            parsingSpinner.succeed(
+              chalk.green('Successfully parsed JSON content'),
+            );
 
             // Ensure the structure matches what the API expects
             updateData = {
@@ -764,12 +947,6 @@ export function agent(program: Command): void {
                   editorData.instructions.general;
               }
             }
-
-            // Log the update data to help debug
-            console.log(
-              chalk.blue('Parsed update data:'),
-              JSON.stringify(updateData, null, 2),
-            );
           } catch (error) {
             console.error(chalk.red('\n❌ Error parsing JSON from editor:'));
             console.error(chalk.red('Please make sure the JSON is valid.'));
@@ -787,13 +964,20 @@ export function agent(program: Command): void {
         }
 
         // Update the agent
-        console.log(chalk.blue('\nUpdating agent...'));
+        const updateSpinner = process.stdout.isTTY
+          ? ora({
+              text: chalk.blue('Updating agent...'),
+              spinner: 'dots',
+            }).start()
+          : { succeed: console.log, fail: console.error, stop: () => {} };
+
         const updatedAgent = await client.updateAgent(agentId, updateData);
 
         if (updatedAgent) {
-          console.log(chalk.green('\n✨ Agent updated successfully!\n'));
+          updateSpinner.succeed(chalk.green('Agent updated successfully!'));
 
           // Ask about deployment
+          console.log('\n');
           const deployAnswer = await inquirer.prompt([
             {
               type: 'confirm',
@@ -804,12 +988,20 @@ export function agent(program: Command): void {
           ]);
 
           if (deployAnswer.deploy) {
-            console.log(chalk.blue('\nDeploying agent...'));
+            const deploySpinner = process.stdout.isTTY
+              ? ora({
+                  text: chalk.blue('Deploying updated agent...'),
+                  spinner: 'dots',
+                }).start()
+              : { succeed: console.log, fail: console.error, stop: () => {} };
+
             try {
               await client.deployAgent(updatedAgent.id);
-              console.log(chalk.green('\n✨ Agent deployed successfully!\n'));
+              deploySpinner.succeed(
+                chalk.green('Agent deployed successfully!'),
+              );
             } catch (deployError) {
-              console.error(chalk.red('\n❌ Error deploying agent:'));
+              deploySpinner.fail(chalk.red('Failed to deploy agent'));
               console.error(
                 chalk.red('The agent was updated but could not be deployed.'),
               );
@@ -820,44 +1012,66 @@ export function agent(program: Command): void {
           }
 
           // Display final agent details
-          console.log(chalk.bold('\nUpdated Agent Details:'));
-          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-          console.log(`${chalk.bold('Name:')}        ${updatedAgent.name}`);
-          console.log(`${chalk.bold('ID:')}          ${updatedAgent.id}`);
-          console.log(`${chalk.bold('Status:')}      ${updatedAgent.status}`);
-          console.log(`${chalk.bold('Type:')}        ${updatedAgent.type}`);
+          console.log('\n');
+          console.log(chalk.bold.blue('🚀 Updated Agent Details'));
+          console.log(chalk.dim('─'.repeat(50)));
+
+          // Display final agent details in a cleaner format
+          console.log(chalk.bold('Name:     ') + chalk.cyan(updatedAgent.name));
+          console.log(chalk.bold('ID:       ') + chalk.dim(updatedAgent.id));
           console.log(
-            `${chalk.bold('Model:')}       ${updatedAgent.model_provider} / ${updatedAgent.model_name}`,
+            chalk.bold('Status:   ') + colorizeStatus(updatedAgent.status),
           );
+          console.log(
+            chalk.bold('Type:     ') + chalk.white(updatedAgent.type),
+          );
+          console.log(
+            chalk.bold('Model:    ') +
+              chalk.yellow(
+                `${updatedAgent.model_provider}/${updatedAgent.model_name}`,
+              ),
+          );
+
           if ('icon' in updatedAgent && updatedAgent.icon) {
-            console.log(`${chalk.bold('Icon:')}        ${updatedAgent.icon}`);
+            console.log(chalk.bold('Icon:     ') + updatedAgent.icon);
           }
+
           if (updatedAgent.description) {
-            console.log(
-              `${chalk.bold('Description:')} ${updatedAgent.description}`,
-            );
+            console.log(chalk.bold('Description: ') + updatedAgent.description);
           }
-          if (updatedAgent.instructions) {
-            console.log(`\n${chalk.bold('Instructions:')}`);
+
+          // Show instructions if available in a cleaner format
+          if (
+            updatedAgent.instructions &&
+            (updatedAgent.instructions.role ||
+              updatedAgent.instructions.goal ||
+              updatedAgent.instructions.general)
+          ) {
+            console.log('\n' + chalk.bold('Instructions:'));
+
             if (updatedAgent.instructions.role) {
               console.log(
-                `${chalk.bold('Role:')}     ${updatedAgent.instructions.role}`,
+                chalk.bold('• Role:    ') + updatedAgent.instructions.role,
               );
             }
+
             if (updatedAgent.instructions.goal) {
               console.log(
-                `${chalk.bold('Goal:')}     ${updatedAgent.instructions.goal}`,
+                chalk.bold('• Goal:    ') + updatedAgent.instructions.goal,
               );
             }
+
             if (updatedAgent.instructions.general) {
               console.log(
-                `${chalk.bold('General:')}  ${updatedAgent.instructions.general}`,
+                chalk.bold('• General: ') + updatedAgent.instructions.general,
               );
             }
           }
-          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+          console.log(chalk.dim('─'.repeat(50)));
+          console.log(chalk.green.bold('\n✅ Agent update complete!\n'));
         } else {
-          console.error(chalk.red('\n❌ Failed to update agent.'));
+          updateSpinner.fail(chalk.red('Failed to update agent'));
           console.error(
             chalk.red('Please check the logs above for more details.'),
           );
