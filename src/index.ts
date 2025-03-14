@@ -7,10 +7,12 @@ import inquirer from 'inquirer';
 import { version } from '../package.json';
 import { agent } from './commands/agent';
 import { configureConfigureCommand } from './commands/configure';
+import { configureInterfacesCommands } from './commands/interfaces/index';
 import {
   configureLoginCommand,
   configureProfileCommand,
 } from './commands/login';
+import { configureOperationsCommand } from './commands/operations/index';
 import { displayBanner } from './utils/banner';
 import { createClient } from './utils/client';
 import {
@@ -123,7 +125,13 @@ async function main(): Promise<void> {
   // Check if they're running a command or just showing help
   const hasArgs = process.argv.length > 2;
   const hasCommand = process.argv.some((arg) => {
-    return ['configure', 'profile', 'agent'].includes(arg);
+    return [
+      'configure',
+      'profile',
+      'agent',
+      'interfaces',
+      'operations',
+    ].includes(arg);
   });
   const isRequestingHelp =
     process.argv.includes('--help') || process.argv.includes('-h');
@@ -153,6 +161,8 @@ async function main(): Promise<void> {
   configureConfigureCommand(program);
   configureLoginCommand(program);
   configureProfileCommand(program);
+  configureInterfacesCommands(program);
+  configureOperationsCommand(program);
   agent(program);
 
   // If no arguments or commands provided, show welcome message and help
@@ -172,6 +182,20 @@ async function main(): Promise<void> {
     }
     console.log('');
     program.outputHelp();
+    return;
+  }
+
+  // Skip welcome message for interfaces commands
+  const isInterfacesCommand = process.argv.includes('interfaces');
+  const isOperationsCommand = process.argv.includes('operations');
+  if (isInterfacesCommand || isOperationsCommand) {
+    try {
+      await program.parseAsync(process.argv);
+      process.exit(0);
+    } catch (err: any) {
+      console.error(chalk.red('Error: ') + (err.message || String(err)));
+      process.exit(1);
+    }
     return;
   }
 

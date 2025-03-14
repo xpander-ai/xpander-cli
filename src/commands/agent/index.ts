@@ -1,10 +1,12 @@
 import { Command } from 'commander';
+import { configureGraphCommands } from '../agent-graph';
 import { registerDeleteCommand } from './commands/delete';
 import { registerGetCommand } from './commands/get';
 import { registerListCommand } from './commands/list';
 import { registerNewCommand } from './commands/new';
 import { registerUpdateCommand } from './commands/update';
 import { interactiveAgentMode } from './interactive/index';
+import { configureToolsCommands } from './tools';
 
 /**
  * Configure agent-related commands
@@ -31,4 +33,8 @@ export function agent(program: Command): void {
   registerNewCommand(agentCmd);
   registerDeleteCommand(agentCmd);
   registerUpdateCommand(agentCmd);
+
+  // Register graph and tools commands
+  configureGraphCommands(agentCmd);
+  configureToolsCommands(agentCmd);
 }

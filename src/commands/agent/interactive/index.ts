@@ -86,6 +86,7 @@ export async function interactiveAgentMode() {
             { name: 'View agent details', value: 'view' },
             { name: 'Create a new agent', value: 'create' },
             { name: 'Update an agent', value: 'update' },
+            { name: 'Manage agent tools & interfaces', value: 'tools' },
             { name: 'Delete agents (single or multiple)', value: 'delete' },
             { name: 'Exit', value: 'exit' },
           ],
@@ -115,6 +116,12 @@ export async function interactiveAgentMode() {
           // Import dynamically to avoid circular dependencies
           const { deleteAgents } = await import('./delete');
           await deleteAgents(client, agents);
+          break;
+        }
+        case 'tools': {
+          // Import dynamically to avoid circular dependencies
+          const { manageAgentTools } = await import('./tools');
+          await manageAgentTools(client, agents);
           break;
         }
         case 'exit':
