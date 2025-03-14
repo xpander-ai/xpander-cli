@@ -25,55 +25,55 @@ import {
 async function verifyProfile(profileName: string): Promise<boolean> {
   console.log(chalk.blue('Verifying profile by fetching agents...'));
   try {
-    const spinner = ora('Getting agent list...').start();
+    // Create a client with the profile's API key
     const client = createClient(profileName);
-    const agents = await client.getAgents();
+    const agentsResponse = await client.getAgents();
+    const agents = agentsResponse || [];
 
-    // Check if we have agents and can extract the organization ID from them
-    if (agents && agents.length > 0 && agents[0].organization_id) {
-      const orgId = agents[0].organization_id;
+    // Get organization ID from agents or from stored config
+    const orgId = getOrganizationId(profileName);
 
-      // Explicitly save the organization ID to ensure it's stored
+    if (orgId) {
+      // Save the organization ID in the config
       setOrganizationId(orgId, profileName);
-
-      spinner.succeed(
-        `Profile verified! Organization ID: ${chalk.green(orgId)}`,
+      console.log(
+        chalk.green(`Profile verified! Organization ID: ${chalk.green(orgId)}`),
       );
       console.log(
-        `Found ${chalk.cyan(agents.length)} agent(s) in your organization.`,
+        chalk.green(`Found ${agents.length} agent(s) in your organization.`),
       );
-      return true;
-    }
-
-    // Fall back to checking if the client saved the organization ID
-    const orgId = getOrganizationId(profileName);
-    if (orgId) {
-      spinner.succeed(
-        `Profile verified! Organization ID: ${chalk.green(orgId)}`,
-      );
-      if (agents) {
-        console.log(
-          `Found ${chalk.cyan(agents.length)} agent(s) in your organization.`,
-        );
-      }
       return true;
     } else {
-      spinner.warn(
-        'Profile partially verified, but could not detect organization ID.',
+      // No organization ID found
+      console.log(
+        chalk.yellow(
+          'Profile partially verified, but could not detect organization ID.',
+        ),
       );
       console.log(
         chalk.yellow(
           'Organization ID is missing. Run "xpander agent list --profile ' +
             profileName +
-            '" to try again.',
+            '" to auto-detect.',
         ),
+      );
+      return true; // Return true because the API call was successful
+    }
+  } catch (error: any) {
+    // Handle specific error codes
+    if (error.status === 403) {
+      console.error(chalk.red('Profile verification failed:'));
+      console.error(
+        chalk.yellow('Authentication error: API key may be invalid.'),
+      );
+      console.error(
+        chalk.yellow('Try running: xpander configure --profile ' + profileName),
       );
       return false;
     }
-  } catch (error: any) {
+
     console.error(chalk.red('Profile verification failed:'));
-    console.error(chalk.red(error.message || 'Unknown error'));
-    console.log(chalk.yellow('Check your API key and try again.'));
+    console.error(chalk.yellow(error.message || 'Unknown error'));
     return false;
   }
 }
@@ -90,7 +90,7 @@ export function configureConfigureCommand(program: Command): void {
       '--org <organization_id>',
       'Your Xpander organization ID (optional, auto-detected if omitted)',
     )
-    .option('--profile <profile>', 'Profile name to use')
+    .option('--profile <name>', 'Profile name to use')
     .option('--no-validate', 'Skip credential validation')
     .action(async (options) => {
       const shouldValidate = options.validate !== false;
@@ -244,18 +244,61 @@ export function configureConfigureCommand(program: Command): void {
     .command('profile')
     .description('Manage profiles')
     .option('--list', 'List available profiles')
-    .option('--set-default <profile>', 'Set a profile as the default')
+    .option('--set-default <name>', 'Set a profile as the default')
     .option(
-      '--new [profile]',
+      '--new [name]',
       'Create a new profile (starts wizard if no name provided)',
     )
-    .option('--edit <profile>', 'Edit an existing profile')
+    .option('--edit <name>', 'Edit an existing profile')
     .option(
-      '--verify [profile]',
-      'Verify a profile by connecting to the API (uses current profile if none specified)',
+      '--verify [name]',
+      'Verify a profile works by connecting to the API',
     )
     .action(async (options) => {
       const profiles = listProfiles();
+      const defaultProfile = getCurrentProfile();
+
+      // If no options are provided, show available profiles and help
+      if (
+        !options.list &&
+        !options.setDefault &&
+        options.new === undefined &&
+        !options.edit &&
+        options.verify === undefined
+      ) {
+        console.log(chalk.cyan('Available profiles:'));
+        profiles.forEach((profile) => {
+          if (profile === defaultProfile) {
+            console.log(
+              `  * ${chalk.green(profile)} ${chalk.gray('(default)')}`,
+            );
+          } else {
+            console.log(`    ${profile}`);
+          }
+        });
+
+        console.log('');
+        console.log(chalk.cyan('Usage:'));
+        console.log('  xpander profile [options]');
+        console.log('');
+        console.log(chalk.cyan('Options:'));
+        console.log('  --list                List available profiles');
+        console.log('  --set-default <name>  Set a profile as the default');
+        console.log('  --new [name]          Create a new profile');
+        console.log('  --edit <name>         Edit an existing profile');
+        console.log(
+          '  --verify [name]       Verify a profile works by connecting to the API',
+        );
+        console.log('  -h, --help            Display help for command');
+        console.log('');
+        console.log(chalk.cyan('Global profile usage:'));
+        console.log('  To use a specific profile with any command:');
+        console.log('  xpander [command] --profile <profile_name>');
+        console.log('');
+        console.log(chalk.cyan('Example:'));
+        console.log('  xpander agent list --profile dev');
+        return;
+      }
 
       // Handle verifying a profile
       if (options.verify !== undefined) {
@@ -267,7 +310,13 @@ export function configureConfigureCommand(program: Command): void {
         if (!profiles.includes(profileName)) {
           console.log(chalk.red(`Profile "${profileName}" does not exist.`));
           console.log(chalk.yellow('Available profiles:'));
-          profiles.forEach((profile) => console.log(`  ${profile}`));
+          profiles.forEach((profile) => {
+            if (profile === defaultProfile) {
+              console.log(`  * ${profile} (default)`);
+            } else {
+              console.log(`    ${profile}`);
+            }
+          });
           return;
         }
 
@@ -289,9 +338,38 @@ export function configureConfigureCommand(program: Command): void {
             chalk.red(`Profile "${options.setDefault}" does not exist.`),
           );
           console.log(chalk.yellow('Available profiles:'));
-          profiles.forEach((profile) => console.log(`  ${profile}`));
+          profiles.forEach((profile) => {
+            if (profile === defaultProfile) {
+              console.log(`  * ${profile} (default)`);
+            } else {
+              console.log(`    ${profile}`);
+            }
+          });
           return;
         }
+      }
+
+      // Handle listing profiles
+      if (options.list) {
+        console.log(chalk.cyan('Available profiles:'));
+        if (profiles.length === 0) {
+          console.log(
+            chalk.yellow(
+              '  No profiles found. Create one with "xpander configure"',
+            ),
+          );
+        } else {
+          profiles.forEach((profile) => {
+            if (profile === defaultProfile) {
+              console.log(
+                `  * ${chalk.green(profile)} ${chalk.gray('(default)')}`,
+              );
+            } else {
+              console.log(`    ${profile}`);
+            }
+          });
+        }
+        return;
       }
 
       // Handle creating a new profile
@@ -379,7 +457,7 @@ export function configureConfigureCommand(program: Command): void {
         return;
       }
 
-      // Handle editing a profile
+      // Handle editing an existing profile
       if (options.edit) {
         const profileName = options.edit;
 
@@ -465,73 +543,5 @@ export function configureConfigureCommand(program: Command): void {
 
         return;
       }
-
-      // Display the profiles if just listing
-      if (options.list) {
-        console.log(chalk.blue('Available profiles:'));
-        if (profiles.length === 0) {
-          console.log(
-            chalk.yellow(
-              '  No profiles found. Run "xpander profile --new <name>" to create a profile.',
-            ),
-          );
-        } else {
-          // Get the default profile
-          const defaultProfile = getCurrentProfile();
-
-          profiles.forEach((profile: string) => {
-            if (profile === defaultProfile) {
-              console.log(
-                `  ${chalk.green('*')} ${profile} ${chalk.green('(default)')}`,
-              );
-            } else {
-              console.log(`    ${profile}`);
-            }
-          });
-        }
-        return;
-      }
-
-      // Otherwise display the profiles and help information
-      console.log(chalk.blue('Available profiles:'));
-      if (profiles.length === 0) {
-        console.log(
-          chalk.yellow(
-            '  No profiles found. Run "xpander profile --new <name>" to create a profile.',
-          ),
-        );
-      } else {
-        // Get the default profile
-        const defaultProfile = getCurrentProfile();
-
-        profiles.forEach((profile: string) => {
-          if (profile === defaultProfile) {
-            console.log(
-              `  ${chalk.green('*')} ${profile} ${chalk.green('(default)')}`,
-            );
-          } else {
-            console.log(`    ${profile}`);
-          }
-        });
-      }
-
-      // Display help information
-      console.log('\n' + chalk.blue('Usage:'));
-      console.log('  xpander profile [options]');
-      console.log('\n' + chalk.blue('Options:'));
-      console.log('  --list                List available profiles');
-      console.log('  --set-default <name>  Set a profile as the default');
-      console.log('  --new <name>          Create a new profile');
-      console.log('  --edit <name>         Edit an existing profile');
-      console.log(
-        '  --verify [name]       Verify a profile works by connecting to the API',
-      );
-      console.log('  -h, --help            Display help for command');
-
-      console.log('\n' + chalk.blue('Global profile usage:'));
-      console.log('  To use a specific profile with any command:');
-      console.log('  xpander [command] --profile <profile_name>');
-      console.log('\n' + chalk.blue('Example:'));
-      console.log('  xpander agent list --profile dev');
     });
 }

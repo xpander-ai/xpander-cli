@@ -28,17 +28,14 @@ export function displayBanner(): void {
     ? `Profile: ${chalk.cyan(currentProfile)}`
     : '';
 
-  const bannerText = `
-${chalk.blue(xpanderText)}
-
+  const bannerText = `${chalk.blue(xpanderText)}
  ${tagline}
- ${chalk.gray(`v${version}`)}   ${profileInfo}
-  `;
+ ${chalk.gray(`v${version}`)}   ${profileInfo}`;
 
   console.log(
     boxen(bannerText, {
       padding: 1,
-      margin: 0, // Reduced margin
+      margin: 0,
       borderStyle: 'round',
       borderColor: 'blue',
     }),

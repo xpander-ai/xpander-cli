@@ -281,7 +281,7 @@ export class XpanderClient {
       };
 
       const config = {
-        method: 'POST',
+        method: 'DELETE',
         url: `${this.baseUrl}${url}`,
         headers: {
           'x-api-key': this.client.defaults.headers['x-api-key'],
