@@ -1,7 +1,8 @@
 import axios, { AxiosResponse } from 'axios';
 import chalk from 'chalk';
 import { getApiKey, getOrganizationId, setOrganizationId } from './config';
-import { Agent } from '../types';
+import { Agent, GraphConnection, GraphNode } from '../types';
+import { OperationApi } from './api/agent/operation';
 
 const API_BASE_URL = 'https://inbound.xpander.ai';
 
@@ -9,15 +10,38 @@ const API_BASE_URL = 'https://inbound.xpander.ai';
  * Client for interacting with the Xpander API
  */
 export class XpanderClient {
+  /**
+   * Extract tool calls from an LLM response
+   * Static utility method for working with LLM responses
+   */
+  static extractToolCalls(llmResponse: any): any[] {
+    if (
+      !llmResponse ||
+      !llmResponse.choices ||
+      llmResponse.choices.length === 0
+    ) {
+      return [];
+    }
+
+    const choice = llmResponse.choices[0];
+    if (!choice.message || !choice.message.tool_calls) {
+      return [];
+    }
+
+    return choice.message.tool_calls;
+  }
+
   private client: any;
   private orgId: string | null = null;
   private baseUrl: string = API_BASE_URL;
   private currentProfile: string | undefined;
+  private operationApi: OperationApi;
 
   constructor(apiKey: string, orgId?: string, profile?: string) {
     // Get organization ID from config or passed parameter
     this.orgId = orgId || getOrganizationId(profile) || null;
     this.currentProfile = profile;
+    this.operationApi = new OperationApi(this.baseUrl, apiKey);
 
     // Create Axios client with the base URL and headers
     this.client = axios.create({
@@ -124,14 +148,6 @@ export class XpanderClient {
    */
   async getOrganizationId(): Promise<string | null> {
     return this.orgId;
-  }
-
-  /**
-   * Ensure we have an organization ID - no longer required but kept for compatibility
-   * @returns true if we have an organization ID, false otherwise
-   */
-  private async ensureOrganizationId(): Promise<boolean> {
-    return true; // We no longer require an organization ID for basic operations
   }
 
   /**
@@ -387,28 +403,73 @@ export class XpanderClient {
    */
   async getAgenticInterfaces(): Promise<any[]> {
     try {
-      // Ensure we have an organization ID
-      const hasOrgId = await this.ensureOrganizationId();
+      // Using the confirmed working endpoint that doesn't require organization ID
+      const url = `/agents-crud/tools/agent_tools/search-interfaces`;
 
-      if (!hasOrgId) {
-        console.log(
-          'Warning: No organization ID available. Cannot fetch interfaces.',
+      // Send the request with the working payload structure
+      const response = await this.client.post(url, {
+        search_phrase: '',
+        list_mode: true,
+      });
+
+      if (response.data && Array.isArray(response.data)) {
+        return response.data;
+      } else if (response.data && response.data.detail === 'Not Found') {
+        console.error(
+          chalk.yellow(
+            'API endpoint not found. The interfaces endpoint may have changed.',
+          ),
         );
         return [];
+      } else {
+        // Log the actual response for debugging
+        console.error('Unexpected response format:', response.data);
+        return [];
       }
-
-      const url = `/${this.orgId}/interfaces`;
-      const response = await this.client.get(url);
-      return response.data || [];
     } catch (error: any) {
       if (error.response) {
+        const status = error.response.status;
+        const errorMessage =
+          error.response.data?.detail ||
+          error.response.data?.message ||
+          JSON.stringify(error.response.data) ||
+          'Unknown error';
+
+        console.error(chalk.red(`API Error (${status}): ${errorMessage}`));
+
+        // Additional information for debugging
+        if (status === 404) {
+          console.error(
+            chalk.yellow(
+              'The API endpoint could not be found. The API structure may have changed.',
+            ),
+          );
+        } else if (status === 422) {
+          console.error(
+            chalk.yellow(
+              'The API rejected the request. The required payload format may have changed.',
+            ),
+          );
+          console.error(
+            chalk.dim(
+              'Sent payload:',
+              JSON.stringify({
+                search_phrase: '',
+                list_mode: true,
+              }),
+            ),
+          );
+        }
+      } else if (error.request) {
         console.error(
-          `API Error (${error.response.status}): ${
-            error.response.data?.message || 'Unknown error'
-          }`,
+          chalk.red(
+            'No response received from server. Check your network connection.',
+          ),
         );
       } else {
-        console.error(`Error fetching interfaces:`, error.message || error);
+        console.error(
+          chalk.red(`Error fetching interfaces: ${error.message || error}`),
+        );
       }
       return [];
     }
@@ -418,32 +479,7 @@ export class XpanderClient {
    * Get operations for a specific interface
    */
   async getAgenticOperations(interfaceId: string): Promise<any[]> {
-    try {
-      // Ensure we have an organization ID
-      const hasOrgId = await this.ensureOrganizationId();
-
-      if (!hasOrgId) {
-        console.log(
-          'Warning: No organization ID available. Cannot fetch operations.',
-        );
-        return [];
-      }
-
-      const url = `/${this.orgId}/interfaces/${interfaceId}/operations`;
-      const response = await this.client.get(url);
-      return response.data || [];
-    } catch (error: any) {
-      if (error.response) {
-        console.error(
-          `API Error (${error.response.status}): ${
-            error.response.data?.message || 'Unknown error'
-          }`,
-        );
-      } else {
-        console.error(`Error fetching operations:`, error.message || error);
-      }
-      return [];
-    }
+    return this.operationApi.getAgenticOperations(interfaceId);
   }
 
   /**
@@ -462,16 +498,18 @@ export class XpanderClient {
   ): Promise<boolean> {
     try {
       // Ensure we have an organization ID
-      const hasOrgId = await this.ensureOrganizationId();
-
-      if (!hasOrgId) {
+      if (!this.orgId) {
         console.log(
-          'Warning: No organization ID available. Cannot attach tools.',
+          chalk.yellow(
+            'Warning: No organization ID available. Cannot attach tools.',
+          ),
         );
         return false;
       }
 
+      // Use the correct endpoint based on the API structure
       const url = `/${this.orgId}/agents/${agentId}/tools`;
+
       await this.client.post(url, toolsPayload);
       return true;
     } catch (error: any) {
@@ -489,16 +527,128 @@ export class XpanderClient {
   }
 
   /**
+   * Creates a graph item (node) for an agent
+   * @param agentId Agent ID
+   * @param itemId Operation ID to use on the graph
+   * @param name Name of the graph item
+   * @returns Graph item object
+   */
+  async createGraphNode(
+    agentId: string,
+    itemId: string,
+    name: string,
+  ): Promise<GraphNode> {
+    try {
+      // Ensure we have an organization ID
+      if (!this.orgId) {
+        console.log(
+          chalk.yellow(
+            'Warning: No organization ID available. Cannot create graph node.',
+          ),
+        );
+        throw new Error('Organization ID is required');
+      }
+
+      // Use the correct endpoint based on the API structure
+      const url = `/${this.orgId}/agents/${agentId}/graph/nodes`;
+
+      const response = await this.client.post(url, {
+        item_id: itemId,
+        name: name,
+      });
+
+      return response.data;
+    } catch (error) {
+      console.error(chalk.red('Failed to create graph node:'), error);
+      throw error;
+    }
+  }
+
+  /**
+   * Connects two graph nodes with an edge
+   * @param agentId Agent ID
+   * @param sourceId Source node ID
+   * @param targetId Target node ID
+   * @param condition Optional condition for the edge (default: 'success')
+   * @returns Success status
+   */
+  async connectGraphNodes(
+    agentId: string,
+    sourceId: string,
+    targetId: string,
+    condition: string = 'success',
+  ): Promise<boolean> {
+    try {
+      // Ensure we have an organization ID
+      if (!this.orgId) {
+        console.log(
+          chalk.yellow(
+            'Warning: No organization ID available. Cannot connect graph nodes.',
+          ),
+        );
+        return false;
+      }
+
+      // Use the correct endpoint based on the API structure
+      const url = `/${this.orgId}/agents/${agentId}/graph/edges`;
+
+      await this.client.post(url, {
+        source: sourceId,
+        target: targetId,
+        condition: condition,
+      });
+
+      return true;
+    } catch (error) {
+      console.error(chalk.red('Failed to connect graph nodes:'), error);
+      return false;
+    }
+  }
+
+  /**
+   * Gets the graph structure for an agent
+   * @param agentId Agent ID
+   * @returns Graph structure with nodes and edges
+   */
+  async getAgentGraph(
+    agentId: string,
+  ): Promise<{ nodes: GraphNode[]; edges: GraphConnection[] }> {
+    try {
+      // Ensure we have an organization ID
+      if (!this.orgId) {
+        console.log(
+          chalk.yellow(
+            'Warning: No organization ID available. Cannot get agent graph.',
+          ),
+        );
+        return { nodes: [], edges: [] };
+      }
+
+      // Use the correct endpoint based on the API structure
+      const url = `/${this.orgId}/agents/${agentId}/graph`;
+
+      const response = await this.client.get(url);
+      return {
+        nodes: response.data.nodes || [],
+        edges: response.data.edges || [],
+      };
+    } catch (error) {
+      console.error(chalk.red('Failed to get agent graph:'), error);
+      return { nodes: [], edges: [] };
+    }
+  }
+
+  /**
    * Syncs an agent
    */
   async syncAgent(agentId: string): Promise<boolean> {
     try {
       // Ensure we have an organization ID
-      const hasOrgId = await this.ensureOrganizationId();
-
-      if (!hasOrgId) {
+      if (!this.orgId) {
         console.log(
-          'Warning: No organization ID available. Cannot sync agent.',
+          chalk.yellow(
+            'Warning: No organization ID available. Cannot sync agent.',
+          ),
         );
         return false;
       }
@@ -531,7 +681,7 @@ export class XpanderClient {
     try {
       if (this.orgId) {
         console.log(
-          chalk.dim(`Deploying agent to organization: ${this.orgId}...`),
+          chalk.dim(`Deploying agent in organization: ${this.orgId}...`),
         );
       }
       const url = '/agents-crud/tools/crud/deploy';
@@ -556,18 +706,20 @@ export class XpanderClient {
       return true;
     } catch (error: any) {
       if (error.response) {
-        console.error(chalk.red(`Status: ${error.response.status}`));
         console.error(
           chalk.red(
-            `Message: ${error.response.data?.message || 'Unknown error'}`,
+            `API Error (${error.response.status}): ${
+              error.response.data?.message || 'Unknown error'
+            }`,
           ),
         );
-      } else if (error.request) {
-        console.error(chalk.red('No response received from server'));
       } else {
-        console.error(chalk.red(error.message || 'Unknown error occurred'));
+        console.error(
+          chalk.red(`Error deploying agent ${agentId}:`),
+          error.message || error,
+        );
       }
-      throw new Error('Failed to deploy agent');
+      return false;
     }
   }
 }
