@@ -7,6 +7,10 @@ import inquirer from 'inquirer';
 import { version } from '../package.json';
 import { agent } from './commands/agent';
 import { configureConfigureCommand } from './commands/configure';
+import {
+  configureLoginCommand,
+  configureProfileCommand,
+} from './commands/login';
 import { displayBanner } from './utils/banner';
 import { createClient } from './utils/client';
 import {
@@ -21,22 +25,21 @@ import {
 
 async function isLoggedIn(): Promise<boolean> {
   const apiKey = getApiKey();
-  if (!apiKey) return false;
-
-  // Validation function removed - simply return true if API key exists
-  return true;
+  return !!apiKey; // Simple check if API key exists
 }
 
 async function promptLogin() {
   console.log(
-    chalk.yellow('You need to configure profile to use the Xpander CLI.'),
+    chalk.yellow(
+      'You need to configure your credentials to use the Xpander CLI.',
+    ),
   );
 
   const shouldLogin = await inquirer.prompt([
     {
       type: 'confirm',
       name: 'configure',
-      message: 'Would you like to configure profile now?',
+      message: 'Would you like to configure your credentials now?',
       default: true,
     },
   ]);
@@ -51,60 +54,54 @@ async function promptLogin() {
       (cmd) => cmd.name() === 'configure',
     );
     if (configureCmd) {
-      await configureCmd.parseAsync([], { from: 'user' });
+      await configureCmd.parseAsync([]);
     }
   } else {
     console.log(
-      chalk.blue(
-        'You can configure the profile later by running: xpander configure',
+      chalk.yellow(
+        'You can configure your credentials later by running: xpander configure',
       ),
     );
-    // Use return instead of exit to allow the CLI to continue normally
-    return;
+    process.exit(0);
   }
 }
 
 async function showProfileInfo() {
   const currentProfile = getCurrentProfile();
-  const orgId = getOrganizationId();
+  let orgId;
+  let agents = [];
 
-  // Create a more concise output
-  let profileInfo = `Profile: ${chalk.green(currentProfile)}`;
+  try {
+    orgId = getOrganizationId();
+    let profileInfo = `Profile: ${chalk.green(currentProfile)}`;
 
-  if (orgId) {
-    profileInfo += ` | Organization ID: ${chalk.green(orgId)}`;
+    if (orgId) {
+      profileInfo += ` | Organization ID: ${chalk.green(orgId)}`;
 
-    // Get agent count from the API
-    try {
-      const client = createClient();
-      const agents = await client.getAgents();
-
-      if (agents && agents.length >= 0) {
+      try {
+        const client = createClient();
+        const response = await client.getAgents();
+        agents = response || [];
         profileInfo += ` | Agents: ${chalk.cyan(agents.length)}`;
+      } catch (error: any) {
+        if (error.status === 403) {
+          profileInfo += ` | ${chalk.yellow('Authorization error: API key may be invalid')}`;
+        } else {
+          profileInfo += ` | ${chalk.yellow('Error fetching agents')}`;
+        }
       }
-    } catch (error) {
-      // Ignore errors, we're just trying to get the agent count if possible
+    } else {
+      profileInfo += ` | ${chalk.yellow('No Organization ID - run "xpander agent list" to auto-detect')}`;
     }
-  } else {
-    profileInfo += ` | ${chalk.yellow('No Organization ID - run "xpander agent list" to auto-detect')}`;
+
+    console.log(profileInfo);
+  } catch (error) {
+    console.log(`Profile: ${chalk.green(currentProfile)}`);
   }
-
-  console.log(profileInfo);
-
-  // We're removing the message about multiple profiles to make the output more concise
 }
 
 async function main(): Promise<void> {
-  // Check if this is just 'xpander' with no args or options
-  const hasArgs = process.argv.length > 2;
-  const isHelpCommand =
-    process.argv.includes('--help') || process.argv.includes('-h');
-  const isVersionCommand =
-    process.argv.includes('--version') ||
-    process.argv.includes('-V') ||
-    process.argv.includes('-v');
-
-  // Check if we're setting the default profile
+  // Display banner
   const isSettingDefaultProfile =
     process.argv.includes('profile') && process.argv.includes('--set-default');
 
@@ -123,66 +120,25 @@ async function main(): Promise<void> {
     displayBanner();
   }
 
-  // Display the version information if the -v flag is provided
-  if (process.argv.includes('-v') || process.argv.includes('--version')) {
-    // The version is already displayed in the banner, so we don't need to print it again
-    process.exit(0);
-  }
+  // Check if they're running a command or just showing help
+  const hasArgs = process.argv.length > 2;
+  const hasCommand = process.argv.some((arg) => {
+    return ['configure', 'profile', 'agent'].includes(arg);
+  });
+  const isRequestingHelp =
+    process.argv.includes('--help') || process.argv.includes('-h');
+  const isRequestingVersion =
+    process.argv.includes('--version') || process.argv.includes('-v');
 
-  // If just 'xpander' is run with no args, check if logged in
+  // If they're just requesting help or version, we can proceed without checking login
   if (
-    !hasArgs ||
-    (!isHelpCommand && !isVersionCommand && process.argv[2] !== 'configure')
+    !isRequestingHelp &&
+    !isRequestingVersion &&
+    !(await isLoggedIn()) &&
+    hasCommand
   ) {
-    const loggedIn = await isLoggedIn();
-    if (!loggedIn) {
-      await promptLogin();
-
-      // If we've just logged in and there were no other args, show available commands
-      if (!hasArgs) {
-        console.log('');
-        await showProfileInfo();
-
-        // Initialize program to show help content
-        const program = new Command('xpander')
-          .version(version, '-v, --version', 'Output the version number')
-          .description('Xpander.ai CLI for managing AI agents')
-          .option('--output <format>', 'Output format (json, table)', 'table')
-          .option('--profile <n>', 'Profile to use (default: current profile)')
-          .addHelpCommand();
-
-        // Register commands for help display
-        configureConfigureCommand(program);
-        agent(program);
-
-        console.log('');
-        program.outputHelp();
-
-        return;
-      }
-    } else if (!hasArgs) {
-      // If logged in and no args, show welcome message, profile info, and available commands
-      console.log(chalk.green('Welcome back to Xpander CLI!'));
-      console.log('');
-      await showProfileInfo();
-
-      // Initialize program to show help content
-      const program = new Command('xpander')
-        .version(version, '-v, --version', 'Output the version number')
-        .description('Xpander.ai CLI for managing AI agents')
-        .option('--output <format>', 'Output format (json, table)', 'table')
-        .option('--profile <n>', 'Profile to use (default: current profile)')
-        .addHelpCommand();
-
-      // Register commands for help display
-      configureConfigureCommand(program);
-      agent(program);
-
-      console.log('');
-      program.outputHelp();
-
-      return;
-    }
+    await promptLogin();
+    return;
   }
 
   // Initialize the CLI program
@@ -191,8 +147,37 @@ async function main(): Promise<void> {
     .description('Xpander.ai CLI for managing AI agents')
     .option('--output <format>', 'Output format (json, table)', 'table')
     .option('--profile <n>', 'Profile to use (default: current profile)')
-    .addHelpCommand()
-    .hook('preAction', () => {
+    .addHelpCommand();
+
+  // Register commands
+  configureConfigureCommand(program);
+  configureLoginCommand(program);
+  configureProfileCommand(program);
+  agent(program);
+
+  // If no arguments or commands provided, show welcome message and help
+  if (!hasArgs || (!hasCommand && !isRequestingHelp && !isRequestingVersion)) {
+    if (await isLoggedIn()) {
+      console.log(chalk.green('Welcome to Xpander CLI!'));
+      console.log('');
+      await showProfileInfo();
+    } else {
+      console.log(chalk.green('Welcome to Xpander CLI!'));
+      console.log('');
+      console.log(
+        chalk.yellow(
+          'You are not logged in. Run "xpander configure" to set up your credentials.',
+        ),
+      );
+    }
+    console.log('');
+    program.outputHelp();
+    return;
+  }
+
+  try {
+    // Set the output format if specified in global options
+    program.hook('preAction', () => {
       // Get options from the root command (global options)
       const globalOptions = program.opts();
 
@@ -227,21 +212,28 @@ async function main(): Promise<void> {
       }
     });
 
-  // Register commands
-  configureConfigureCommand(program);
-  agent(program);
-
-  try {
     await program.parseAsync(process.argv);
     process.exit(0);
-  } catch (err) {
-    console.error(chalk.red(err));
+  } catch (err: any) {
+    if (err.status === 403) {
+      console.error(
+        chalk.red('Authentication Error: ') +
+          'You lack permission for this action.',
+      );
+      console.error(
+        chalk.yellow(
+          'Try running "xpander configure" to update your API credentials.',
+        ),
+      );
+    } else {
+      console.error(chalk.red('Error: ') + (err.message || String(err)));
+    }
     process.exit(1);
   }
 }
 
-main().catch((error) => {
-  console.error(chalk.red('Error:'), error.message);
+main().catch((error: any) => {
+  console.error(chalk.red('Error:'), error.message || String(error));
   process.exitCode = 1;
 });
 

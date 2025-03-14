@@ -1,4 +1,3 @@
-import axios from 'axios';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import inquirer from 'inquirer';
@@ -13,81 +12,7 @@ import {
   createProfile,
 } from '../utils/config';
 
-// Define the validation result type
-interface ValidationResult {
-  isValid: boolean;
-  message?: string;
-}
-
-// Function to validate the API key format
-function isValidApiKeyFormat(apiKey: string): boolean {
-  // Check if key meets basic requirements (you can adjust this as needed)
-  return typeof apiKey === 'string' && apiKey.length >= 20;
-}
-
-// Function to validate the organization ID format
-function isValidOrgIdFormat(orgId: string): boolean {
-  // Check if organization ID meets basic requirements (you can adjust this as needed)
-  return typeof orgId === 'string' && orgId.trim().length >= 3;
-}
-
-// Function to validate the API key and organization ID pair against the API
-async function validateCredentialPair(
-  apiKey: string,
-  orgId: string,
-): Promise<ValidationResult> {
-  try {
-    // Create a test API client
-    const client = axios.create({
-      baseURL: 'https://inbound.xpander.ai',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-      },
-    });
-
-    // Try a simple API call to validate the key-org pair
-    await client.get(`/${orgId}/agents/list`);
-
-    // If we get here without an error, the credentials are valid
-    return { isValid: true };
-  } catch (error: any) {
-    // Determine if this is an authentication error (401) or permission error (403)
-    // versus a connection error or other issue
-    if (error.response) {
-      // We got a response from the server
-      const status = error.response.status;
-
-      if (status === 404) {
-        // 404 might indicate that the org ID is wrong
-        return {
-          isValid: false,
-          message:
-            'Organization ID not found. Please check your organization ID.',
-        };
-      } else if (status === 401 || status === 403) {
-        // Both 401 and 403 indicate authentication/authorization failures
-        return {
-          isValid: false,
-          message:
-            'Authentication failed. Please check your API key and organization ID.',
-        };
-      } else if (status >= 500) {
-        // Server errors shouldn't necessarily invalidate the credentials
-        return {
-          isValid: false,
-          message: 'Server error occurred. Could not validate credentials.',
-        };
-      }
-    }
-
-    // For network errors or other issues
-    return {
-      isValid: false,
-      message: 'Connection error. Could not validate credentials.',
-    };
-  }
-}
+// The validation functions and interface have been removed as they're no longer used in this file
 
 /**
  * Configure the login command
@@ -97,7 +22,7 @@ export function configureLoginCommand(program: Command): void {
     .command('login')
     .description('Log in to Xpander')
     .option('--key <api_key>', 'Your Xpander API key')
-    .option('--profile <profile>', 'Profile name to use')
+    .option('--profile <name>', 'Profile name to use')
     .action(async (options) => {
       // Get API key, either from command line or prompt
       let apiKey = options.key;
@@ -177,162 +102,11 @@ export function configureLoginCommand(program: Command): void {
     });
 }
 
-/**
- * Configures the configure command
- */
-export function configureCommand(program: Command): void {
-  program
-    .command('configure')
-    .description('Configure the CLI')
-    .option('-k, --key <key>', 'API key for authentication')
-    .option(
-      '-p, --profile <profileName>',
-      'Profile name to use (default: "default")',
-    )
-    .option(
-      '-o, --org <organizationId>',
-      'Set your organization ID explicitly (required)',
-    )
-    .option('--no-validate', 'Skip API key validation')
-    .action(async (options) => {
-      let apiKey = options.key;
-      let organizationId = options.org;
-      const profileName = options.profile || getCurrentProfile();
-      const skipValidation = options.validate === false;
+// The configureCommand function has been removed to eliminate the duplicate implementation
+// The correct implementation should be in src/commands/configure.ts
 
-      // If no API key is provided, prompt the user
-      if (!apiKey) {
-        console.log(
-          chalk.blue(
-            'Your API key is required to authenticate with Xpander.ai',
-          ),
-        );
-        console.log(
-          chalk.gray(
-            '(You can find your API key in your Xpander.ai dashboard)',
-          ),
-        );
-
-        const answers = await inquirer.prompt([
-          {
-            type: 'password',
-            name: 'apiKey',
-            message: 'Enter your Xpander.ai API key:',
-            validate: (input: string) => {
-              if (!input) {
-                return 'API key is required';
-              }
-              // Validate the API key format
-              if (!isValidApiKeyFormat(input)) {
-                return 'Invalid API key format. API keys should be at least 20 characters long.';
-              }
-              return true;
-            },
-          },
-        ]);
-        apiKey = answers.apiKey;
-      } else if (!isValidApiKeyFormat(apiKey)) {
-        // If API key was provided via command line, validate it
-        console.error(
-          chalk.red(
-            'Invalid API key format. API keys should be at least 20 characters long.',
-          ),
-        );
-        process.exit(1);
-      }
-
-      // If no organization ID is provided, prompt the user
-      if (!organizationId) {
-        console.log(
-          chalk.blue(
-            'Your organization ID is required for Xpander.ai API operations',
-          ),
-        );
-        console.log(
-          chalk.gray(
-            '(You can find your organization ID in your Xpander.ai dashboard)',
-          ),
-        );
-
-        const orgAnswers = await inquirer.prompt([
-          {
-            type: 'input',
-            name: 'orgId',
-            message: 'Enter your Xpander.ai organization ID:',
-            validate: (input: string) => {
-              if (!input) {
-                return 'Organization ID is required';
-              }
-              // Validate the organization ID format
-              if (!isValidOrgIdFormat(input)) {
-                return 'Invalid organization ID format. Organization IDs should be at least 3 characters long.';
-              }
-              return true;
-            },
-          },
-        ]);
-        organizationId = orgAnswers.orgId;
-      } else if (!isValidOrgIdFormat(organizationId)) {
-        // If org ID was provided via command line, validate it
-        console.error(
-          chalk.red(
-            'Invalid organization ID format. Organization IDs should be at least 3 characters long.',
-          ),
-        );
-        process.exit(1);
-      }
-
-      let validationResult: ValidationResult = { isValid: true };
-
-      // Validate the credentials against the API unless --no-validate is specified
-      if (!skipValidation) {
-        console.log(chalk.blue('Validating credentials...'));
-        validationResult = await validateCredentialPair(apiKey, organizationId);
-
-        if (!validationResult.isValid) {
-          console.error(
-            chalk.red(`✗ Validation failed: ${validationResult.message}`),
-          );
-          process.exit(1);
-        }
-
-        if (validationResult.message) {
-          console.log(chalk.yellow(validationResult.message));
-        } else {
-          console.log(chalk.green('✓ Credentials validated successfully'));
-        }
-      } else {
-        console.log(
-          chalk.yellow('Skipping credential validation (--no-validate)'),
-        );
-        console.log(
-          chalk.yellow(
-            'Note: Invalid credentials may cause API operations to fail',
-          ),
-        );
-      }
-
-      // Save the credentials
-      setApiKey(apiKey, profileName);
-      console.log(chalk.green(`✓ API key saved to profile "${profileName}"`));
-
-      setOrganizationId(organizationId, profileName);
-      console.log(
-        chalk.green(
-          `✓ Organization ID saved to profile "${profileName}": ${organizationId}`,
-        ),
-      );
-
-      // Set as current profile
-      setCurrentProfile(profileName);
-      console.log(
-        chalk.green(
-          `✓ Successfully configured Xpander CLI using profile "${profileName}"`,
-        ),
-      );
-    });
-
-  // Add profile subcommand
+// Add profile subcommand
+export function configureProfileCommand(program: Command): void {
   program
     .command('profile')
     .description('Manage profiles for different organizations')
