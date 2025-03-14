@@ -1,6 +1,62 @@
+[![Version](https://img.shields.io/npm/v/@xpander-ai/cli.svg)](https://www.npmjs.com/package/@xpander-ai/cli)
+[![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](https://github.com/xpander-ai/xpander-cli/blob/main/LICENSE)
+[![Node.js](https://img.shields.io/badge/node-16.x%20%7C%2018.x%20%7C%2020.x-brightgreen.svg)](https://nodejs.org/)
+
 # Xpander CLI
 
-A command-line interface for interacting with the Xpander.ai platform, allowing you to manage AI agents, interfaces, operations, and more.
+## Table of Contents
+
+- [Xpander CLI](#xpander-cli)
+  - [Table of Contents](#table-of-contents)
+  - [Quick Start](#quick-start)
+  - [Installation](#installation)
+  - [Configuration](#configuration)
+  - [Managing Profiles](#managing-profiles)
+  - [Command Reference](#command-reference)
+    - [View All Available Commands](#view-all-available-commands)
+  - [Agent Management](#agent-management)
+    - [Interactive Mode](#interactive-mode)
+    - [List Your Agents](#list-your-agents)
+    - [Get Agent Details](#get-agent-details)
+    - [Create a New Agent](#create-a-new-agent)
+    - [Update an Agent](#update-an-agent)
+    - [Delete an Agent](#delete-an-agent)
+    - [Agent Graph Management](#agent-graph-management)
+    - [Agent Tools and Operations](#agent-tools-and-operations)
+  - [Interface Operations](#interface-operations)
+    - [Interface Explorer](#interface-explorer)
+    - [List Interfaces](#list-interfaces)
+    - [View Interface Operations](#view-interface-operations)
+  - [Operation Management](#operation-management)
+  - [File Export Capabilities](#file-export-capabilities)
+  - [Output Formats](#output-formats)
+  - [Authentication and Login](#authentication-and-login)
+  - [Development](#development)
+    - [Project Structure](#project-structure)
+    - [Common Build Issues and Solutions](#common-build-issues-and-solutions)
+      - [Module Import Errors](#module-import-errors)
+      - [Unused Variables](#unused-variables)
+      - [CLI Binary Configuration](#cli-binary-configuration)
+  - [License](#license)
+
+## Quick Start
+
+```bash
+# Install the CLI
+npm install -g @xpander-ai/cli
+
+# Configure with your API key
+xpander configure
+
+# Create a new agent (interactive mode)
+xpander agent new
+
+# Explore available interfaces
+xpander interfaces
+
+# Connect operations to your agent
+xpander agent tools --id YOUR_AGENT_ID
+```
 
 ## Installation
 
@@ -52,7 +108,7 @@ xpander profile --switch prod
 xpander profile --set-default prod
 ```
 
-## Commands Overview
+## Command Reference
 
 ### View All Available Commands
 
@@ -82,13 +138,73 @@ This provides a guided menu-based interface for all agent operations.
 xpander agent list
 ```
 
+<details>
+<summary>Example output</summary>
+
+```
+╭──────────────────────────────────────────────────────────────╮
+│                                                              │
+│    __  __ _ __    __ _  _ __    __| |  ___  _ __  __ _  _    │
+│    \ \/ /| '_ \  / _` || '_ \  / _` | / _ \| '__|/ _` || |   │
+│     >  < | |_) || (_| || | | || (_| ||  __/| | _| (_| || |   │
+│    /_/\_\| .__/  \__,_||_| |_| \__,_| \___||_|(_)\__,_||_|   │
+│          | |                                                 │
+│                                                              │
+│    Build Better AI Agents faster                             │
+│    v0.0.0   Profile: personal                                │
+│                                                              │
+╰──────────────────────────────────────────────────────────────╯
+
+✅ Found 3 agents:
+
+┌─────────┬────────────────────────┬────────────────────────────────┬────────────┐
+│ Name    │ ID                     │ Description                     │ Type       │
+├─────────┼────────────────────────┼────────────────────────────────┼────────────┤
+│ TestBot │ 647a8d4c52e83a07d9e3b5 │ A test agent for documentation  │ chat       │
+│ DocBot  │ 647a8d4c52e83a07d9e3b7 │ Documentation assistant         │ structured │
+│ AnalyzeX│ 647a8d4c52e83a07d9e3c1 │ Data analysis helper            │ chat       │
+└─────────┴────────────────────────┴────────────────────────────────┴────────────┘
+```
+</details>
+
 ### Get Agent Details
 
 ```bash
 xpander agent get --id AGENT_ID
 ```
 
-If no ID is provided, the CLI will prompt you to select from your available agents.
+<details>
+<summary>Example output</summary>
+
+```
+╭──────────────────────────────────────────────────────────────╮
+│                                                              │
+│    __  __ _ __    __ _  _ __    __| |  ___  _ __  __ _  _    │
+│    \ \/ /| '_ \  / _` || '_ \  / _` | / _ \| '__|/ _` || |   │
+│     >  < | |_) || (_| || | | || (_| ||  __/| | _| (_| || |   │
+│    /_/\_\| .__/  \__,_||_| |_| \__,_| \___||_|(_)\__,_||_|   │
+│          | |                                                 │
+│                                                              │
+│    Build Better AI Agents faster                             │
+│    v0.0.0   Profile: personal                                │
+│                                                              │
+╰──────────────────────────────────────────────────────────────╯
+
+📋 Agent Details:
+
+Name: TestBot
+ID: 647a8d4c52e83a07d9e3b5
+Type: chat
+Model: gpt-4
+Description: A test agent for documentation
+
+📊 Statistics:
+- Created: 2023-07-15
+- Last Updated: 2023-08-20
+- Message Count: 156
+- Connected Operations: 3
+```
+</details>
 
 ### Create a New Agent
 
@@ -118,7 +234,7 @@ You can update various properties of an existing agent.
 xpander agent delete --id AGENT_ID
 ```
 
-## Agent Graph Management
+### Agent Graph Management
 
 Manage the agent's decision graph:
 
@@ -128,7 +244,7 @@ xpander agent graph --id AGENT_ID
 
 This provides tools for visualizing and modifying the agent's decision flow.
 
-## Agent Tools and Operations
+### Agent Tools and Operations
 
 Connect agentic operations to your agents:
 
@@ -136,9 +252,38 @@ Connect agentic operations to your agents:
 xpander agent tools --id AGENT_ID
 ```
 
-This allows you to add, remove, and configure operations that your agent can use.
+<details>
+<summary>Example output</summary>
 
-## Interface Management
+```
+╭──────────────────────────────────────────────────────────────╮
+│                                                              │
+│    __  __ _ __    __ _  _ __    __| |  ___  _ __  __ _  _    │
+│    \ \/ /| '_ \  / _` || '_ \  / _` | / _ \| '__|/ _` || |   │
+│     >  < | |_) || (_| || | | || (_| ||  __/| | _| (_| || |   │
+│    /_/\_\| .__/  \__,_||_| |_| \__,_| \___||_|(_)\__,_||_|   │
+│          | |                                                 │
+│                                                              │
+│    Build Better AI Agents faster                             │
+│    v0.0.0   Profile: personal                                │
+│                                                              │
+╰──────────────────────────────────────────────────────────────╯
+
+🔧 Xpander Agent Tools Manager
+════════════════════════════════════════════════════════════
+Configuring Tools for Agent: TestBot (647a8d4c52e83a07d9e3b5)
+════════════════════════════════════════════════════════════
+
+? What would you like to do? › 
+❯ Connect interface operations to this agent
+  View connected operations
+  Remove operations from this agent
+  Back to main menu
+  Exit
+```
+</details>
+
+## Interface Operations
 
 Xpander CLI provides tools for working with agentic interfaces.
 
@@ -150,11 +295,39 @@ The enhanced interface explorer helps you discover and interact with available i
 xpander interfaces
 ```
 
-This interactive tool allows you to:
-- Browse available interfaces
-- View operations for each interface
-- Select and examine operation schemas
-- Save operation schemas to files for reference
+<details>
+<summary>Example output</summary>
+
+```
+╭──────────────────────────────────────────────────────────────╮
+│                                                              │
+│    __  __ _ __    __ _  _ __    __| |  ___  _ __  __ _  _    │
+│    \ \/ /| '_ \  / _` || '_ \  / _` | / _ \| '__|/ _` || |   │
+│     >  < | |_) || (_| || | | || (_| ||  __/| | _| (_| || |   │
+│    /_/\_\| .__/  \__,_||_| |_| \__,_| \___||_|(_)\__,_||_|   │
+│          | |                                                 │
+│                                                              │
+│    Build Better AI Agents faster                             │
+│    v0.0.0   Profile: personal                                │
+│                                                              │
+╰──────────────────────────────────────────────────────────────╯
+
+🚀 Xpander Tools Explorer
+════════════════════════════════════════════════════════════
+Discover, Connect, and Manage your AI Agent Operations
+════════════════════════════════════════════════════════════
+✔ Interfaces loaded successfully
+? Select an interface: ›
+❯ Reddit (7b925b25...)
+  arXiv (1ec81aa7...)
+  Movie Database (49c3130c...)
+  Weather (c6d57ee2...)
+  Perplexity (33bd2a1a...)
+  Crunchbase (825b3405...)
+  x.com (475019c2...)
+  xpanderAI Tools (794f532f...)
+```
+</details>
 
 ### List Interfaces
 
@@ -164,6 +337,39 @@ List all available interfaces:
 xpander interfaces list
 ```
 
+<details>
+<summary>Example output</summary>
+
+```
+╭──────────────────────────────────────────────────────────────╮
+│                                                              │
+│    __  __ _ __    __ _  _ __    __| |  ___  _ __  __ _  _    │
+│    \ \/ /| '_ \  / _` || '_ \  / _` | / _ \| '__|/ _` || |   │
+│     >  < | |_) || (_| || | | || (_| ||  __/| | _| (_| || |   │
+│    /_/\_\| .__/  \__,_||_| |_| \__,_| \___||_|(_)\__,_||_|   │
+│          | |                                                 │
+│                                                              │
+│    Build Better AI Agents faster                             │
+│    v0.0.0   Profile: personal                                │
+│                                                              │
+╰──────────────────────────────────────────────────────────────╯
+
+Available Interfaces:
+
+Reddit (7b925b25-9a0f-41df-a7ab-2a09bef334a7)
+Access Reddit posts, comments, and search capabilities
+
+arXiv (1ec81aa7-3aee-460d-a5a6-492dd05242ad)
+Search and retrieve scientific papers from arXiv repository
+
+Movie Database (49c3130c-23c8-490f-9511-9b136880061e)
+Query information about movies, actors, and TV shows
+
+Weather (c6d57ee2-a749-46d1-820a-2b9d7745ae14)
+Get current weather and forecasts for locations worldwide
+```
+</details>
+
 ### View Interface Operations
 
 List operations for a specific interface:
@@ -171,6 +377,39 @@ List operations for a specific interface:
 ```bash
 xpander interfaces operations --interface INTERFACE_ID
 ```
+
+<details>
+<summary>Example output</summary>
+
+```
+╭──────────────────────────────────────────────────────────────╮
+│                                                              │
+│    __  __ _ __    __ _  _ __    __| |  ___  _ __  __ _  _    │
+│    \ \/ /| '_ \  / _` || '_ \  / _` | / _ \| '__|/ _` || |   │
+│     >  < | |_) || (_| || | | || (_| ||  __/| | _| (_| || |   │
+│    /_/\_\| .__/  \__,_||_| |_| \__,_| \___||_|(_)\__,_||_|   │
+│          | |                                                 │
+│                                                              │
+│    Build Better AI Agents faster                             │
+│    v0.0.0   Profile: personal                                │
+│                                                              │
+╰──────────────────────────────────────────────────────────────╯
+
+Found 7 operation(s):
+
+1. Get Comments by Post ID
+   Summary: Retrieve comments for a specific Reddit post. Workflow: SearchPostsByQuery to get post_id -> GetCommentsByPostId for detailed comments. Returns comment depth, score, and nested post/author details.
+   Endpoint: GET /post_comments
+   ID: 6730dafddbeac5e67e4cbd77
+
+2. Search Comments by Query
+   Summary: Search Reddit comments by keyword or phrase. Workflow: SearchCommentsByQuery to find relevant comments -> GetCommentsByPostId for full context.
+   Endpoint: GET /search_comments
+   ID: 6730dafddbeac5e67e4cbd78
+
+[Additional operations...]
+```
+</details>
 
 ## Operation Management
 
@@ -240,7 +479,16 @@ yarn build
 yarn cli
 ```
 
-## Project Structure
+For local development and testing:
+
+```bash
+# Make code changes
+# Then build and run locally
+npm run build
+node ./lib/index.js [command]
+```
+
+### Project Structure
 
 This project uses [projen](https://github.com/projen/projen) for project configuration and build management. The main configuration is in `.projenrc.ts`:
 
@@ -255,9 +503,17 @@ tsc .projenrc.ts
 npx projen
 ```
 
-## Common Build Issues and Solutions
+Key directories:
+- `src/`: Source code
+  - `src/commands/`: CLI command implementations
+  - `src/utils/`: Utility functions and API client
+  - `src/types/`: TypeScript type definitions
+- `lib/`: Compiled JavaScript output
+- `test/`: Test files
 
-### Module Import Errors
+### Common Build Issues and Solutions
+
+#### Module Import Errors
 
 If you encounter module import errors related to CommonJS modules (like chalk, ora, etc.), make sure you have the proper TypeScript configuration:
 
@@ -270,7 +526,7 @@ tsconfig: {
 },
 ```
 
-### Unused Variables
+#### Unused Variables
 
 Unused imports or variables can cause TypeScript compilation errors. You can either:
 
@@ -287,7 +543,7 @@ tsconfigDev: {
 },
 ```
 
-### CLI Binary Configuration
+#### CLI Binary Configuration
 
 Ensure the package.json includes the proper `bin` entry for the CLI:
 
