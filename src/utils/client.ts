@@ -310,7 +310,7 @@ export class XpanderClient {
   }
 
   /**
-   * Updates an agent
+   * Updates an agent with new data
    */
   async updateAgent(
     agentId: string,
@@ -379,6 +379,112 @@ export class XpanderClient {
 
       // Return null instead of throwing to better handle the error at the command level
       return null;
+    }
+  }
+
+  /**
+   * Get available agentic interfaces
+   */
+  async getAgenticInterfaces(): Promise<any[]> {
+    try {
+      // Ensure we have an organization ID
+      const hasOrgId = await this.ensureOrganizationId();
+
+      if (!hasOrgId) {
+        console.log(
+          'Warning: No organization ID available. Cannot fetch interfaces.',
+        );
+        return [];
+      }
+
+      const url = `/${this.orgId}/interfaces`;
+      const response = await this.client.get(url);
+      return response.data || [];
+    } catch (error: any) {
+      if (error.response) {
+        console.error(
+          `API Error (${error.response.status}): ${
+            error.response.data?.message || 'Unknown error'
+          }`,
+        );
+      } else {
+        console.error(`Error fetching interfaces:`, error.message || error);
+      }
+      return [];
+    }
+  }
+
+  /**
+   * Get operations for a specific interface
+   */
+  async getAgenticOperations(interfaceId: string): Promise<any[]> {
+    try {
+      // Ensure we have an organization ID
+      const hasOrgId = await this.ensureOrganizationId();
+
+      if (!hasOrgId) {
+        console.log(
+          'Warning: No organization ID available. Cannot fetch operations.',
+        );
+        return [];
+      }
+
+      const url = `/${this.orgId}/interfaces/${interfaceId}/operations`;
+      const response = await this.client.get(url);
+      return response.data || [];
+    } catch (error: any) {
+      if (error.response) {
+        console.error(
+          `API Error (${error.response.status}): ${
+            error.response.data?.message || 'Unknown error'
+          }`,
+        );
+      } else {
+        console.error(`Error fetching operations:`, error.message || error);
+      }
+      return [];
+    }
+  }
+
+  /**
+   * Get operations for a specific interface (alias for getAgenticOperations)
+   */
+  async getInterfaceOperations(interfaceId: string): Promise<any[]> {
+    return this.getAgenticOperations(interfaceId);
+  }
+
+  /**
+   * Attach operations to an agent
+   */
+  async attachAgentTools(
+    agentId: string,
+    toolsPayload: any[],
+  ): Promise<boolean> {
+    try {
+      // Ensure we have an organization ID
+      const hasOrgId = await this.ensureOrganizationId();
+
+      if (!hasOrgId) {
+        console.log(
+          'Warning: No organization ID available. Cannot attach tools.',
+        );
+        return false;
+      }
+
+      const url = `/${this.orgId}/agents/${agentId}/tools`;
+      await this.client.post(url, toolsPayload);
+      return true;
+    } catch (error: any) {
+      if (error.response) {
+        console.error(
+          `API Error (${error.response.status}): ${
+            error.response.data?.message || 'Unknown error'
+          }`,
+        );
+      } else {
+        console.error(`Error attaching tools:`, error.message || error);
+      }
+      return false;
     }
   }
 
