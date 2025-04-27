@@ -5,6 +5,7 @@ import { Agent, GraphConnection, GraphNode } from '../types';
 import { OperationApi } from './api/agent/operation';
 
 const API_BASE_URL = 'https://inbound.xpander.ai';
+const API_BASE_URL_STG = 'https://inbound.stg.xpander.ai';
 
 /**
  * Client for interacting with the Xpander API
@@ -32,13 +33,24 @@ export class XpanderClient {
   }
 
   private client: any;
-  private orgId: string | null = null;
+  public isStg: boolean = false;
+  public orgId: string | null = null;
   private baseUrl: string = API_BASE_URL;
   private currentProfile: string | undefined;
   private operationApi: OperationApi;
 
-  constructor(apiKey: string, orgId?: string, profile?: string) {
+  constructor(
+    public apiKey: string,
+    orgId?: string,
+    profile?: string,
+  ) {
     // Get organization ID from config or passed parameter
+
+    this.isStg = process?.env?.IS_STG === 'true';
+    if (this.isStg) {
+      this.baseUrl = API_BASE_URL_STG;
+    }
+
     this.orgId = orgId || getOrganizationId(profile) || null;
     this.currentProfile = profile;
     this.operationApi = new OperationApi(this.baseUrl, apiKey);

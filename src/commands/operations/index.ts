@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import { Command } from 'commander';
 import ora from 'ora';
 import { interactiveOperationsMode } from './interactive';
+import { CommandType } from '../../types';
 import { AgenticOperation } from '../../types/agent/operation';
 import { createClient } from '../../utils/client';
 import { getApiKey } from '../../utils/config';
@@ -12,7 +13,7 @@ import { exploreInterfaces } from '../interfaces/explorer';
  */
 export function configureOperationsCommand(program: Command): Command {
   const operationsCmd = program
-    .command('operations')
+    .command(CommandType.Operations)
     .description('List operations for an agentic interface')
     .argument('[interfaceId]', 'Interface ID to fetch operations for')
     .option('--profile <name>', 'Profile to use')

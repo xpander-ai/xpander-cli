@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import { Command } from 'commander';
+import { CommandType } from '../../../types';
 import { createClient } from '../../../utils/client';
 import { getApiKey } from '../../../utils/config';
 import { formatOutput } from '../../../utils/formatter';
@@ -10,7 +11,7 @@ import { formatOutput } from '../../../utils/formatter';
 export function registerListCommand(agentCmd: Command): void {
   // List all agents
   agentCmd
-    .command('list')
+    .command(CommandType.List)
     .description('List all agents')
     .option('--json', 'Output in JSON format')
     .option('--all', 'Show all agents, including inactive ones')
@@ -122,7 +123,7 @@ export function registerListCommand(agentCmd: Command): void {
 
   // List agents in JSON format (alias for list --json)
   agentCmd
-    .command('list-json')
+    .command(CommandType.ListJson)
     .description('List all agents in raw JSON format')
     .option('--all', 'Show all agents, including inactive ones')
     .option('--profile <name>', 'Profile to use')

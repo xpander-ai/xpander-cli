@@ -13,6 +13,7 @@ import {
   configureProfileCommand,
 } from './commands/login';
 import { configureOperationsCommand } from './commands/operations/index';
+import { allCommands } from './types';
 import { displayBanner } from './utils/banner';
 import { createClient } from './utils/client';
 import {
@@ -22,6 +23,7 @@ import {
   setPreferredFormat,
   listProfiles,
 } from './utils/config';
+export * from './types';
 
 // Read the version from package.json instead of hardcoding it
 
@@ -125,13 +127,7 @@ async function main(): Promise<void> {
   // Check if they're running a command or just showing help
   const hasArgs = process.argv.length > 2;
   const hasCommand = process.argv.some((arg) => {
-    return [
-      'configure',
-      'profile',
-      'agent',
-      'interfaces',
-      'operations',
-    ].includes(arg);
+    return allCommands.includes(arg);
   });
   const isRequestingHelp =
     process.argv.includes('--help') || process.argv.includes('-h');

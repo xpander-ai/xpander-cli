@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import { Command } from 'commander';
 import inquirer from 'inquirer';
 import ora from 'ora';
+import { CommandType } from '../types';
 import {
   setApiKey,
   setOrganizationId,
@@ -19,7 +20,7 @@ import {
  */
 export function configureLoginCommand(program: Command): void {
   program
-    .command('login')
+    .command(CommandType.Login)
     .description('Log in to Xpander')
     .option('--key <api_key>', 'Your Xpander API key')
     .option('--profile <name>', 'Profile name to use')
@@ -108,7 +109,7 @@ export function configureLoginCommand(program: Command): void {
 // Add profile subcommand
 export function configureProfileCommand(program: Command): void {
   program
-    .command('profile')
+    .command(CommandType.Profile)
     .description('Manage profiles for different organizations')
     .option('-l, --list', 'List all available profiles')
     .option('-c, --current', 'Show current profile')

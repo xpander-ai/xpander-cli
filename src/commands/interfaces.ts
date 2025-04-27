@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import { Command } from 'commander';
 import ora from 'ora';
+import { CommandType } from '../types';
 import { AgenticOperation } from '../types/agent/operation';
 import { createClient } from '../utils/client';
 import { getApiKey } from '../utils/config';
@@ -10,7 +11,7 @@ import { getApiKey } from '../utils/config';
  */
 export function configureInterfacesCommands(program: Command): void {
   const interfacesCmd = program
-    .command('interfaces')
+    .command(CommandType.Interfaces)
     .description('Manage agentic interfaces and operations')
     .option('--profile <name>', 'Profile to use');
 
@@ -21,7 +22,7 @@ export function configureInterfacesCommands(program: Command): void {
 
   // List interfaces command
   interfacesCmd
-    .command('list')
+    .command(CommandType.List)
     .description('List available agentic interfaces')
     .option('--profile <name>', 'Profile to use')
     .action(async (options) => {
