@@ -8,12 +8,16 @@ const project = new typescript.TypeScriptProject({
   authorName: 'xpander.ai',
   authorEmail: 'opensource@xpander.ai',
 
+  gitignore: ['.projenrc.js', 'lib'],
+
   // Repository information
   defaultReleaseBranch: 'main',
   repository: 'git@github.com:xpander-ai/xpander-cli.git',
 
   release: true,
   releaseToNpm: true,
+
+  minNodeVersion: '22.15.0',
 
   // Binary entry point for the CLI
   bin: {
@@ -22,8 +26,10 @@ const project = new typescript.TypeScriptProject({
 
   // TypeScript configuration
   tsconfig: {
+    exclude: ['.env', '.env.template'],
     compilerOptions: {
       esModuleInterop: true,
+      typeRoots: ['./node_modules/@types'],
     },
   },
 
@@ -50,6 +56,8 @@ const project = new typescript.TypeScriptProject({
     'ora@^5.4.1',
     'yargs',
     'axios',
+    'progress-stream',
+    'form-data',
   ],
 
   // Development dependencies
@@ -60,7 +68,14 @@ const project = new typescript.TypeScriptProject({
     '@types/yargs',
     'esbuild',
     'ts-node',
+    '@types/progress-stream',
   ],
+  jestOptions: {
+    jestConfig: {
+      detectOpenHandles: true,
+    },
+  },
+  projenrcTs: true,
 });
 
 // Synth the project

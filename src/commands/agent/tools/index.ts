@@ -1,18 +1,19 @@
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { displayOperations } from './operations';
+import { CommandType } from '../../../types';
 import { createClient } from '../../../utils/client';
 import { getApiKey } from '../../../utils/config';
 export { attachOperationsInteractive } from './operations-interactive';
 
 export function configureToolsCommands(agentCmd: Command): void {
   const toolsCmd = agentCmd
-    .command('tools')
+    .command(CommandType.Tools)
     .description('Manage agentic interfaces and operations');
 
   // List interfaces for agents
   toolsCmd
-    .command('interfaces')
+    .command(CommandType.Interfaces)
     .description('List available agentic interfaces')
     .option('--profile <name>', 'Profile to use')
     .action(async (options) => {
@@ -59,7 +60,7 @@ export function configureToolsCommands(agentCmd: Command): void {
 
   // List operations for an interface
   toolsCmd
-    .command('operations')
+    .command(CommandType.Operations)
     .description('List operations for an agentic interface')
     .option('--interface <id>', 'Interface ID')
     .option('--profile <name>', 'Profile to use')

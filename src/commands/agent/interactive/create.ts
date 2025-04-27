@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import ora from 'ora';
+import { initializeAgent } from './initialize';
 import { XpanderClient } from '../../../utils/client';
 
 /**
@@ -108,6 +109,17 @@ export async function createNewAgent(client: XpanderClient) {
       deploySpinner.succeed('Agent deployed successfully');
 
       console.log(chalk.green('\n✅ Agent created and ready to use!'));
+    }
+    const { shouldInitialize } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'shouldInitialize',
+        message: 'Would you like to locally initialize your agent now?',
+        default: true,
+      },
+    ]);
+    if (shouldInitialize) {
+      await initializeAgent(client, newAgent.id);
     }
   } catch (error: any) {
     createSpinner.fail('Failed to create agent');

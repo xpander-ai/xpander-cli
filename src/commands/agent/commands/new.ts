@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import { Command } from 'commander';
 import inquirer from 'inquirer';
 import ora from 'ora';
+import { CommandType } from '../../../types';
 import { XpanderClient } from '../../../utils/client';
 import { getApiKey } from '../../../utils/config';
 
@@ -11,7 +12,7 @@ import { getApiKey } from '../../../utils/config';
 export function registerNewCommand(agentCmd: Command): void {
   // Create a new agent
   agentCmd
-    .command('new')
+    .command(CommandType.New)
     .description('Create a new agent')
     .option('--name <name>', 'Name for the new agent')
     .option('--model <model>', 'Model to use (default: gpt-4o)')

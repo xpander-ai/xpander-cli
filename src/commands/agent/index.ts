@@ -7,12 +7,15 @@ import { registerNewCommand } from './commands/new';
 import { registerUpdateCommand } from './commands/update';
 import { interactiveAgentMode } from './interactive/index';
 import { configureToolsCommands } from './tools';
+import { CommandType } from '../../types';
 
 /**
  * Configure agent-related commands
  */
 export function agent(program: Command): void {
-  const agentCmd = program.command('agent').description('Manage agents');
+  const agentCmd = program
+    .command(CommandType.Agent)
+    .description('Manage agents');
 
   // Add interactive mode as the default command when just running 'xpander agent'
   agentCmd.action(async () => {
@@ -21,7 +24,7 @@ export function agent(program: Command): void {
 
   // Interactive mode (explicitly called via 'agent interactive')
   agentCmd
-    .command('interactive')
+    .command(CommandType.Interactive)
     .description('Interactive agent management mode')
     .action(async () => {
       await interactiveAgentMode();

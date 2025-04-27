@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import ora from 'ora';
+import { CommandType } from '../../../types';
 import { createClient } from '../../../utils/client';
 import { getApiKey } from '../../../utils/config';
 import { displayAgentTable } from '../helpers/display';
@@ -45,12 +46,12 @@ export async function interactiveAgentMode() {
 
         const { action } = await inquirer.prompt([
           {
-            type: 'list',
+            type: CommandType.List,
             name: 'action',
             message: 'What would you like to do?',
             choices: [
-              { name: 'Create a new agent', value: 'create' },
-              { name: 'Exit', value: 'exit' },
+              { name: 'Create a new agent', value: CommandType.Create },
+              { name: 'Exit', value: CommandType.Exit },
             ],
           },
         ]);
@@ -79,52 +80,78 @@ export async function interactiveAgentMode() {
       // Offer available actions
       const { action } = await inquirer.prompt([
         {
-          type: 'list',
+          type: CommandType.List,
           name: 'action',
           message: 'What would you like to do?',
           choices: [
-            { name: 'View agent details', value: 'view' },
-            { name: 'Create a new agent', value: 'create' },
-            { name: 'Update an agent', value: 'update' },
-            { name: 'Manage agent tools & interfaces', value: 'tools' },
-            { name: 'Delete agents (single or multiple)', value: 'delete' },
-            { name: 'Exit', value: 'exit' },
+            { name: 'View agent details', value: CommandType.View },
+            { name: 'Create a new agent', value: CommandType.Create },
+            {
+              name: 'Initialize existing agent',
+              value: CommandType.Initialize,
+            },
+            { name: 'Update an agent', value: CommandType.Update },
+            {
+              name: 'Manage agent tools & interfaces',
+              value: CommandType.Tools,
+            },
+            {
+              name: 'Delete agents (single or multiple)',
+              value: CommandType.Delete,
+            },
+            {
+              name: 'Deploy your agent',
+              value: CommandType.Deploy,
+            },
+            { name: 'Exit', value: CommandType.Exit },
           ],
         },
       ]);
 
       switch (action) {
-        case 'view': {
+        case CommandType.View: {
           // Import dynamically to avoid circular dependencies
           const { viewAgentDetails } = await import('./view');
           await viewAgentDetails(client, agents);
           break;
         }
-        case 'create': {
+        case CommandType.Create: {
           // Import dynamically to avoid circular dependencies
           const { createNewAgent } = await import('./create');
           await createNewAgent(client);
           break;
         }
-        case 'update': {
+        case CommandType.Update: {
           // Import dynamically to avoid circular dependencies
           const { updateExistingAgent } = await import('./update');
           await updateExistingAgent(client, agents);
           break;
         }
-        case 'delete': {
+        case CommandType.Delete: {
           // Import dynamically to avoid circular dependencies
           const { deleteAgents } = await import('./delete');
           await deleteAgents(client, agents);
           break;
         }
-        case 'tools': {
+        case CommandType.Tools: {
           // Import dynamically to avoid circular dependencies
           const { manageAgentTools } = await import('./tools');
           await manageAgentTools(client, agents);
           break;
         }
-        case 'exit':
+        case CommandType.Initialize: {
+          // Import dynamically to avoid circular dependencies
+          const { initializeAgent } = await import('./initialize');
+          await initializeAgent(client);
+          break;
+        }
+        case CommandType.Deploy: {
+          // Import dynamically to avoid circular dependencies
+          const { deployAgent } = await import('./deploy');
+          await deployAgent(client);
+          break;
+        }
+        case CommandType.Exit:
           exitRequested = true;
           console.log(chalk.blue('\nExiting agent management. Goodbye!'));
           break;

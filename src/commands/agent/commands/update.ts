@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import { Command } from 'commander';
 import inquirer from 'inquirer';
 import ora from 'ora';
+import { CommandType } from '../../../types';
 import { createClient } from '../../../utils/client';
 import { colorizeStatus } from '../helpers/format';
 
@@ -11,7 +12,7 @@ import { colorizeStatus } from '../helpers/format';
 export function registerUpdateCommand(agentCmd: Command): void {
   // Update an agent
   agentCmd
-    .command('update')
+    .command(CommandType.Update)
     .description('Update an agent')
     .requiredOption('--id <agent_id>', 'ID of the agent to update')
     .option('--name <name>', 'New name for the agent')

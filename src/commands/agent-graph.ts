@@ -2,7 +2,7 @@ import chalk from 'chalk';
 import { Command } from 'commander';
 import inquirer from 'inquirer';
 import ora from 'ora';
-import { GraphNode } from '../types';
+import { CommandType, GraphNode } from '../types';
 import { attachOperationsInteractive } from './agent/tools';
 import { XpanderClient } from '../utils/client';
 import { getApiKey } from '../utils/config';
@@ -13,12 +13,12 @@ import { getApiKey } from '../utils/config';
 export function configureGraphCommands(agentCmd: Command): void {
   // Add graph command group
   const graphCmd = agentCmd
-    .command('graph')
+    .command(CommandType.Graph)
     .description('Manage agent operation graphs');
 
   // Create a graph for an agent
   graphCmd
-    .command('create')
+    .command(CommandType.Create)
     .description('Create a graph for an agent')
     .option('-a, --agent-id <id>', 'Agent ID to create a graph for')
     .action(async (options) => {
@@ -61,7 +61,7 @@ export function configureGraphCommands(agentCmd: Command): void {
 
   // View an agent's graph structure
   graphCmd
-    .command('view')
+    .command(CommandType.View)
     .description('View the graph structure of an agent')
     .option('-a, --agent-id <id>', 'Agent ID to view the graph for')
     .action(async (options) => {

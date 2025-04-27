@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import { Command } from 'commander';
+import { CommandType } from '../../../types';
 import { createClient } from '../../../utils/client';
 import { getApiKey } from '../../../utils/config';
 import { colorizeStatus } from '../helpers/format';
@@ -10,7 +11,7 @@ import { colorizeStatus } from '../helpers/format';
 export function registerGetCommand(agentCmd: Command): void {
   // Get details about a specific agent
   agentCmd
-    .command('get')
+    .command(CommandType.Get)
     .description('Get details about an agent')
     .requiredOption('--id <agent_id>', 'ID of the agent to get details for')
     .option('--json', 'Output in JSON format')

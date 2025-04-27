@@ -5,6 +5,7 @@ import { Command } from 'commander';
 import inquirer from 'inquirer';
 import ora from 'ora';
 
+import { CommandType } from '../types';
 import { createClient } from '../utils/client';
 import {
   // Comment out all unused imports
@@ -83,7 +84,7 @@ async function verifyProfile(profileName: string): Promise<boolean> {
  */
 export function configureConfigureCommand(program: Command): void {
   program
-    .command('configure')
+    .command(CommandType.Configure)
     .description('Configure your API credentials')
     .option('--key <api_key>', 'Your Xpander API key')
     .option(
@@ -241,7 +242,7 @@ export function configureConfigureCommand(program: Command): void {
     });
 
   program
-    .command('profile')
+    .command(CommandType.Profile)
     .description('Manage profiles')
     .option('--list', 'List available profiles')
     .option('--set-default <name>', 'Set a profile as the default')

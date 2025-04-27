@@ -3,6 +3,7 @@ import { Command } from 'commander';
 import ora from 'ora';
 import { exploreInterfaces } from './explorer';
 import { interactiveInterfacesMode } from './interactive';
+import { CommandType } from '../../types';
 import { AgenticOperation } from '../../types/agent/operation';
 import { createClient } from '../../utils/client';
 import { getApiKey } from '../../utils/config';
@@ -12,7 +13,7 @@ import { getApiKey } from '../../utils/config';
  */
 export function configureInterfacesCommands(program: Command): void {
   const interfacesCmd = program
-    .command('interfaces')
+    .command(CommandType.Interfaces)
     .description('Manage agentic interfaces and operations')
     .option('--profile <n>', 'Profile to use')
     .option('-i, --interactive', 'Launch interactive mode (legacy)')
@@ -36,7 +37,7 @@ export function configureInterfacesCommands(program: Command): void {
 
   // List interfaces command
   interfacesCmd
-    .command('list')
+    .command(CommandType.List)
     .description('List available agentic interfaces')
     .option('--profile <name>', 'Profile to use')
     .action(async (options) => {
@@ -89,7 +90,7 @@ export function configureInterfacesCommands(program: Command): void {
 
   // List operations for an interface
   interfacesCmd
-    .command('operations')
+    .command(CommandType.Operations)
     .description('List operations for an agentic interface')
     .requiredOption('--interface <id>', 'Interface ID')
     .option('--profile <name>', 'Profile to use')

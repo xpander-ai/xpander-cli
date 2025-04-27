@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import { Command } from 'commander';
 import inquirer from 'inquirer';
 import ora from 'ora';
+import { CommandType } from '../../../types';
 import { createClient } from '../../../utils/client';
 
 /**
@@ -10,7 +11,7 @@ import { createClient } from '../../../utils/client';
 export function registerDeleteCommand(agentCmd: Command): void {
   // Delete an agent
   agentCmd
-    .command('delete')
+    .command(CommandType.Delete)
     .description('Delete an agent')
     .requiredOption('--id <agent_id>', 'ID of the agent to delete')
     .option('--confirm', 'Skip confirmation prompt')
