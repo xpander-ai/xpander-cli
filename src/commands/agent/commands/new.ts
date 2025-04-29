@@ -5,6 +5,7 @@ import ora from 'ora';
 import { CommandType } from '../../../types';
 import { XpanderClient } from '../../../utils/client';
 import { getApiKey } from '../../../utils/config';
+import { initializeAgent } from '../interactive/initialize';
 
 /**
  * Register new command to create agents
@@ -18,13 +19,11 @@ export function registerNewCommand(agentCmd: Command): void {
     .option('--model <model>', 'Model to use (default: gpt-4o)')
     .option('--profile <name>', 'Profile to use')
     .option('--json', 'Output result in JSON format')
-    .option('--skip-details', 'Skip the personalization step')
     .action(async (options) => {
       try {
-        let { name, profile, skipDetails } = options as {
+        let { name, profile } = options as {
           name?: string;
           profile?: string;
-          skipDetails?: boolean;
         };
 
         const apiKey = getApiKey(profile);
@@ -62,9 +61,6 @@ export function registerNewCommand(agentCmd: Command): void {
           ]);
 
           name = nameAnswer.agentName;
-
-          // Since we're in interactive mode, ensure we collect all details
-          skipDetails = false;
         }
 
         // At this point, name should always be defined
@@ -86,107 +82,6 @@ export function registerNewCommand(agentCmd: Command): void {
         // Update spinner on success
         spinner.succeed(chalk.green(`Agent "${name}" created successfully!`));
         console.log('\n');
-
-        // If not skipping details, prompt for additional information
-        if (!skipDetails) {
-          const updateAnswers = await inquirer.prompt([
-            {
-              type: 'confirm',
-              name: 'wantToUpdate',
-              message: 'Would you like to personalize your agent?',
-              default: true,
-            },
-          ]);
-
-          if (updateAnswers.wantToUpdate) {
-            console.log(chalk.dim('─'.repeat(50)));
-            console.log(chalk.blue.bold('🪄 Personalizing Your Agent'));
-            console.log(chalk.dim('─'.repeat(50)));
-
-            const details = await inquirer.prompt([
-              {
-                type: 'input',
-                name: 'icon',
-                message: 'Choose an icon for your agent:',
-                default: '🤖',
-              },
-              {
-                type: 'input',
-                name: 'roleInstructions',
-                message: 'What role should your agent perform?',
-                default: '',
-              },
-              {
-                type: 'input',
-                name: 'goalInstructions',
-                message: 'What is the main goal of your agent?',
-                default: '',
-              },
-              {
-                type: 'input',
-                name: 'generalInstructions',
-                message: 'Any additional instructions for your agent?',
-                default: '',
-              },
-            ]);
-
-            // Update the agent with additional details
-            const updateSpinner = process.stdout.isTTY
-              ? ora({
-                  text: chalk.blue('Applying personalization...'),
-                  spinner: 'dots',
-                }).start()
-              : { succeed: console.log, fail: console.error, stop: () => {} };
-
-            const updateData: {
-              icon?: string;
-              instructions?: { role?: string; goal?: string; general?: string };
-            } = {
-              icon: details.icon,
-              instructions: {
-                role: details.roleInstructions || undefined,
-                goal: details.goalInstructions || undefined,
-                general: details.generalInstructions || undefined,
-              },
-            };
-
-            // Only include instructions if at least one field is filled
-            if (
-              !details.roleInstructions &&
-              !details.goalInstructions &&
-              !details.generalInstructions
-            ) {
-              updateData.instructions = undefined;
-            }
-
-            const updatedAgent = await client.updateAgent(
-              createdAgent.id,
-              updateData,
-            );
-
-            if (updatedAgent) {
-              createdAgent = updatedAgent;
-              updateSpinner.succeed(chalk.green('Personalization complete!'));
-            } else {
-              updateSpinner.fail(
-                chalk.yellow(
-                  'Could not apply personalization, but agent was created.',
-                ),
-              );
-            }
-          }
-        }
-
-        // Deploy the agent
-        const deploySpinner = process.stdout.isTTY
-          ? ora({
-              text: chalk.blue('Deploying your agent...'),
-              spinner: 'dots',
-            }).start()
-          : { succeed: console.log, fail: console.error, stop: () => {} };
-
-        await client.deployAgent(createdAgent.id);
-        deploySpinner.succeed(chalk.green('Agent deployed successfully!'));
 
         console.log('\n');
         console.log(chalk.bold.blue('🚀 Your Agent is Ready!'));
@@ -238,6 +133,19 @@ export function registerNewCommand(agentCmd: Command): void {
 
         console.log(chalk.dim('─'.repeat(50)));
         console.log(chalk.green.bold('\n✅ Agent creation complete!\n'));
+
+        const { shouldInitialize } = await inquirer.prompt([
+          {
+            type: 'confirm',
+            name: 'shouldInitialize',
+            message:
+              'Do you want to load this agent into your current workdir?',
+            default: true,
+          },
+        ]);
+        if (shouldInitialize) {
+          await initializeAgent(client, createdAgent.id);
+        }
       } catch (error: any) {
         if (error.status === 403) {
           console.error(chalk.red('❌ Failed to create agent:'));

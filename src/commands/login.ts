@@ -28,9 +28,6 @@ export function configureLoginCommand(program: Command): void {
       const spinner = ora('Authorizing').start();
       const { organizationId, apiKey, firstName } = await waitForAuthCallback();
 
-      // Validate API key
-      spinner.text = 'Validating API key...';
-
       try {
         const isValid = true; // Validation will happen when using the API
 
@@ -58,6 +55,7 @@ Your personal API Key is: ${apiKey}
 
 I've created default profile configured in ~/.xpander
   `);
+          spinner.stop();
         } else {
           spinner.fail('API key validation failed');
           console.log(chalk.red('Invalid API key. Please try again.'));

@@ -54,11 +54,11 @@ async function promptLogin() {
   if (shouldLogin.configure) {
     // Create a temporary program just to run the configure command
     const tempProgram = new Command();
-    configureConfigureCommand(tempProgram);
+    configureLoginCommand(tempProgram);
 
     // Find the configure command and execute it without passing any arguments
     const configureCmd = tempProgram.commands.find(
-      (cmd) => cmd.name() === 'configure',
+      (cmd) => cmd.name() === 'login',
     );
     if (configureCmd) {
       await configureCmd.parseAsync([]);
@@ -134,11 +134,13 @@ async function main(): Promise<void> {
   });
   const isRequestingHelp =
     process.argv.includes('--help') || process.argv.includes('-h');
+  const isLoginRequest = process.argv.includes('login');
   const isRequestingVersion =
     process.argv.includes('--version') || process.argv.includes('-v');
 
   // If they're just requesting help or version, we can proceed without checking login
   if (
+    !isLoginRequest &&
     !isRequestingHelp &&
     !isRequestingVersion &&
     !(await isLoggedIn()) &&
