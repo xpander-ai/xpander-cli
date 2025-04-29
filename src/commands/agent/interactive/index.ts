@@ -103,6 +103,10 @@ export async function interactiveAgentMode() {
               name: 'Deploy your agent',
               value: CommandType.Deploy,
             },
+            {
+              name: 'View Logs',
+              value: CommandType.Logs,
+            },
             { name: 'Exit', value: CommandType.Exit },
           ],
         },
@@ -149,6 +153,12 @@ export async function interactiveAgentMode() {
           // Import dynamically to avoid circular dependencies
           const { deployAgent } = await import('./deploy');
           await deployAgent(client);
+          break;
+        }
+        case CommandType.Logs: {
+          // Import dynamically to avoid circular dependencies
+          const { getAgentLogs } = await import('./logs');
+          await getAgentLogs(client);
           break;
         }
         case CommandType.Exit:
