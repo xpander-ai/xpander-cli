@@ -58,6 +58,8 @@ const project = new typescript.TypeScriptProject({
     'axios',
     'progress-stream',
     'form-data',
+    'express',
+    'open',
   ],
 
   // Development dependencies
@@ -66,6 +68,8 @@ const project = new typescript.TypeScriptProject({
     '@types/inquirer',
     '@types/node',
     '@types/yargs',
+    '@types/express',
+    '@types/open',
     'esbuild',
     'ts-node',
     '@types/progress-stream',
