@@ -14,6 +14,7 @@ import {
   configureLoginCommand,
   configureProfileCommand,
 } from './commands/login';
+import { configureLogsCommand } from './commands/logs';
 import { configureOperationsCommand } from './commands/operations/index';
 import { allCommands } from './types';
 import { displayBanner } from './utils/banner';
@@ -163,6 +164,7 @@ async function main(): Promise<void> {
   configureOperationsCommand(program);
   configureDeployCommand(program);
   configureInitializeCommand(program);
+  configureLogsCommand(program);
   agent(program);
 
   // If no arguments or commands provided, show welcome message and help

@@ -12,6 +12,7 @@ export enum CommandType {
   Tools = 'tools',
   Initialize = 'initialize',
   Deploy = 'deploy',
+  Logs = 'logs',
   Exit = 'exit',
   // Crud
   List = 'list',
