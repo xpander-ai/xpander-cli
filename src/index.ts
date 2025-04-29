@@ -7,6 +7,8 @@ import inquirer from 'inquirer';
 import { version } from '../package.json';
 import { agent } from './commands/agent';
 import { configureConfigureCommand } from './commands/configure';
+import { configureDeployCommand } from './commands/deploy';
+import { configureInitializeCommand } from './commands/initialize';
 import { configureInterfacesCommands } from './commands/interfaces/index';
 import {
   configureLoginCommand,
@@ -159,6 +161,8 @@ async function main(): Promise<void> {
   configureProfileCommand(program);
   configureInterfacesCommands(program);
   configureOperationsCommand(program);
+  configureDeployCommand(program);
+  configureInitializeCommand(program);
   agent(program);
 
   // If no arguments or commands provided, show welcome message and help

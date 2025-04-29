@@ -1,6 +1,10 @@
 {
   "dependencies": [
     {
+      "name": "@types/express",
+      "type": "build"
+    },
+    {
       "name": "@types/fs-extra",
       "type": "build"
     },
@@ -14,6 +18,10 @@
     },
     {
       "name": "@types/node",
+      "type": "build"
+    },
+    {
+      "name": "@types/open",
       "type": "build"
     },
     {
@@ -126,6 +134,10 @@
       "type": "runtime"
     },
     {
+      "name": "express",
+      "type": "runtime"
+    },
+    {
       "name": "form-data",
       "type": "runtime"
     },
@@ -136,6 +148,10 @@
     {
       "name": "inquirer",
       "version": "^8.2.5",
+      "type": "runtime"
+    },
+    {
+      "name": "open",
       "type": "runtime"
     },
     {

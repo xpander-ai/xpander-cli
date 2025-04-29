@@ -7,7 +7,6 @@ import { promisify } from 'util';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import ora from 'ora';
-import { deployAgent } from './deploy';
 import { XPanderConfig } from '../../../types';
 import { XpanderClient } from '../../../utils/client';
 import { pathIsEmpty } from '../../../utils/custom-agents';
@@ -144,18 +143,6 @@ export async function initializeAgent(
     }
 
     initializationSpinner.succeed(`Agent initialized successfully`);
-
-    const { shouldDeploy } = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'shouldDeploy',
-        message: 'Would you like to deploy your agent now?',
-        default: true,
-      },
-    ]);
-    if (shouldDeploy) {
-      await deployAgent(client, true);
-    }
   } catch (error: any) {
     initializationSpinner.fail('Failed to initialize agent');
     console.error(chalk.red('Error:'), error.message || String(error));

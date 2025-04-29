@@ -3,6 +3,7 @@ import { Command } from 'commander';
 import inquirer from 'inquirer';
 import ora from 'ora';
 import { CommandType } from '../types';
+import { waitForAuthCallback } from '../utils/auth';
 import {
   setApiKey,
   setOrganizationId,
@@ -22,66 +23,25 @@ export function configureLoginCommand(program: Command): void {
   program
     .command(CommandType.Login)
     .description('Log in to Xpander')
-    .option('--key <api_key>', 'Your Xpander API key')
     .option('--profile <name>', 'Profile name to use')
     .action(async (options) => {
-      // Get API key, either from command line or prompt
-      let apiKey = options.key;
-      if (!apiKey) {
-        const answers = await inquirer.prompt([
-          {
-            type: 'password',
-            name: 'apiKey',
-            message: 'Enter your Xpander API key:',
-            validate: (input) => {
-              if (!input) return 'API key is required';
-              if (input.length < 20) {
-                return 'API key must be at least 20 characters';
-              }
-              return true;
-            },
-          },
-        ]);
-        apiKey = answers.apiKey;
-      }
+      const spinner = ora('Authorizing').start();
+      const { organizationId, apiKey, firstName } = await waitForAuthCallback();
 
       // Validate API key
-      const spinner = ora('Validating API key...').start();
+      spinner.text = 'Validating API key...';
 
       try {
         const isValid = true; // Validation will happen when using the API
 
         if (isValid) {
-          spinner.succeed('API key validation successful');
-
           // Save the API key to the profile
           const profileName = options.profile || 'default';
           setCurrentProfile(profileName);
           setApiKey(apiKey, profileName);
 
-          console.log(
-            chalk.green(`API key saved to profile "${profileName}".`),
-          );
-          console.log(
-            chalk.green(
-              `Successfully logged in using profile "${profileName}".`,
-            ),
-          );
-
-          // Prompt for organization ID
-          const orgAnswers = await inquirer.prompt([
-            {
-              type: 'input',
-              name: 'orgId',
-              message: 'Enter your Xpander organization ID (optional):',
-            },
-          ]);
-
-          if (orgAnswers.orgId) {
-            setOrganizationId(orgAnswers.orgId, profileName);
-            console.log(
-              chalk.green(`Organization ID saved to profile "${profileName}".`),
-            );
+          if (organizationId) {
+            setOrganizationId(organizationId, profileName);
           } else {
             console.log(chalk.yellow('No organization ID provided.'));
             console.log(
@@ -90,6 +50,14 @@ export function configureLoginCommand(program: Command): void {
               ),
             );
           }
+
+          console.log(`
+Hi${firstName ? ' ' + firstName : ''}, Welcome to xpander!
+Your organization id: ${organizationId}
+Your personal API Key is: ${apiKey}
+
+I've created default profile configured in ~/.xpander
+  `);
         } else {
           spinner.fail('API key validation failed');
           console.log(chalk.red('Invalid API key. Please try again.'));
