@@ -40,13 +40,36 @@ const cloneRepoAndCopy = async (
       const srcPath = path.join(tmpFolder, file);
       const destFilePath = path.join(destPath, file);
 
-      if (file === 'xpander_handler.py' && (await fileExists(destFilePath)))
+      if (file === 'xpander_handler.py' && (await fileExists(destFilePath))) {
         continue;
+      }
       if (
         file === 'agent_instructions.json' &&
         (await fileExists(destFilePath))
-      )
+      ) {
         continue;
+      }
+      if (file === 'requirements.txt' && (await fileExists(destFilePath))) {
+        // merge requirements
+        const existingRequirements = (await fs.readFile(destFilePath))
+          .toString()
+          .split('\n');
+        const newRequirements = (await fs.readFile(srcPath))
+          .toString()
+          .split('\n');
+        const requirementsToAdd = [];
+        for (const req of newRequirements) {
+          if (!existingRequirements.includes(req)) {
+            requirementsToAdd.push(req);
+          }
+        }
+
+        if (requirementsToAdd.length !== 0) {
+          existingRequirements.push(...requirementsToAdd);
+          await fs.writeFile(destFilePath, existingRequirements.join('\n'));
+        }
+        continue;
+      }
 
       const stat = await fs.lstat(srcPath);
 
