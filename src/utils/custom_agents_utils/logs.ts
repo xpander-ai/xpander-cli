@@ -31,7 +31,7 @@ export const streamLogs = async (
     try {
       const res = await axios.get<string[]>(endpoint, {
         headers: { 'x-api-key': client.apiKey },
-        timeout: 5000,
+        timeout: 6000,
       });
 
       if (Array.isArray(res.data)) {
