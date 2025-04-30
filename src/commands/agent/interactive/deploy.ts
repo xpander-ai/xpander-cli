@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
 import chalk from 'chalk';
+import { Command } from 'commander';
 import inquirer from 'inquirer';
 import ora from 'ora';
 import { XPanderConfig } from '../../../types';
@@ -7,6 +8,7 @@ import { XpanderClient } from '../../../utils/client';
 import { fileExists, pathIsEmpty } from '../../../utils/custom-agents';
 import { buildAndSaveDockerImage } from '../../../utils/custom_agents_utils/docker';
 import { uploadAndDeploy } from '../../../utils/custom_agents_utils/upload';
+import { configureLogsCommand } from '../../logs';
 
 const requiredFiles = [
   'requirements.txt',
@@ -99,6 +101,27 @@ export async function deployAgent(
       deploymentSpinner.fail(`Deployment failed`);
     } else {
       deploymentSpinner.succeed(`Agent ${agent.name} deployed successfully`);
+    }
+
+    const { tailLogs } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'tailLogs',
+        message: 'Tail logs from the running AI Agent?',
+        default: true,
+      },
+    ]);
+    if (tailLogs) {
+      // Create a temporary program just to run the logs command
+      const tempProgram = new Command();
+      configureLogsCommand(tempProgram);
+
+      // Find the logs command and execute it without passing any arguments
+      const logsCmd = tempProgram.commands.find((cmd) => cmd.name() === 'logs');
+      if (logsCmd) {
+        await logsCmd.parseAsync([]);
+      }
+      return;
     }
   } catch (error: any) {
     deploymentSpinner.fail('Failed to deploy agent');

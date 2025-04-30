@@ -42,26 +42,24 @@ async function promptLogin() {
     ),
   );
 
-  const shouldLogin = await inquirer.prompt([
+  const { shouldLogin } = await inquirer.prompt([
     {
       type: 'confirm',
-      name: 'configure',
+      name: 'shouldLogin',
       message: 'Would you like to configure your credentials now?',
       default: true,
     },
   ]);
 
-  if (shouldLogin.configure) {
+  if (shouldLogin) {
     // Create a temporary program just to run the configure command
     const tempProgram = new Command();
     configureLoginCommand(tempProgram);
 
     // Find the configure command and execute it without passing any arguments
-    const configureCmd = tempProgram.commands.find(
-      (cmd) => cmd.name() === 'login',
-    );
-    if (configureCmd) {
-      await configureCmd.parseAsync([]);
+    const loginCmd = tempProgram.commands.find((cmd) => cmd.name() === 'login');
+    if (loginCmd) {
+      await loginCmd.parseAsync([]);
     }
   } else {
     console.log(
