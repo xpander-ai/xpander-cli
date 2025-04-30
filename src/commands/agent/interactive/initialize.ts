@@ -9,7 +9,7 @@ import inquirer from 'inquirer';
 import ora from 'ora';
 import { XPanderConfig } from '../../../types';
 import { XpanderClient } from '../../../utils/client';
-import { pathIsEmpty } from '../../../utils/custom-agents';
+import { fileExists, pathIsEmpty } from '../../../utils/custom-agents';
 
 const execAsync = promisify(exec);
 
@@ -39,6 +39,14 @@ const cloneRepoAndCopy = async (
 
       const srcPath = path.join(tmpFolder, file);
       const destFilePath = path.join(destPath, file);
+
+      if (file === 'xpander_handler.py' && (await fileExists(destFilePath)))
+        continue;
+      if (
+        file === 'agent_instructions.json' &&
+        (await fileExists(destFilePath))
+      )
+        continue;
 
       const stat = await fs.lstat(srcPath);
 
@@ -115,6 +123,10 @@ export async function initializeAgent(
 
     initializationSpinner.text = `Initializing ${agent?.name}`;
 
+    const hadInstructionsFile = await fileExists(
+      `${currentDirectory}/agent_instructions.json`,
+    );
+
     // Clone assets into current directory
     await cloneRepoAndCopy(ASSETS_REPO, currentDirectory);
 
@@ -132,14 +144,16 @@ export async function initializeAgent(
       JSON.stringify(config, null, 2),
     );
 
-    // Set agent instructions
-    try {
-      await fs.writeFile(
-        path.join(currentDirectory, 'agent_instructions.json'),
-        JSON.stringify(agent.instructions, null, 2),
-      );
-    } catch (err) {
-      // ignore
+    if (!hadInstructionsFile) {
+      // Set agent instructions
+      try {
+        await fs.writeFile(
+          path.join(currentDirectory, 'agent_instructions.json'),
+          JSON.stringify(agent.instructions, null, 2),
+        );
+      } catch (err) {
+        // ignore
+      }
     }
 
     initializationSpinner.succeed(`Agent initialized successfully`);
