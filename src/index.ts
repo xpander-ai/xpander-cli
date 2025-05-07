@@ -16,6 +16,7 @@ import {
 } from './commands/login';
 import { configureLogsCommand } from './commands/logs';
 import { configureOperationsCommand } from './commands/operations/index';
+import { configureSecretsSyncCommand } from './commands/secrets-sync';
 import { allCommands } from './types';
 import { displayBanner } from './utils/banner';
 import { createClient } from './utils/client';
@@ -165,6 +166,7 @@ async function main(): Promise<void> {
   configureDeployCommand(program);
   configureInitializeCommand(program);
   configureLogsCommand(program);
+  configureSecretsSyncCommand(program);
   agent(program);
 
   // If no arguments or commands provided, show welcome message and help
