@@ -24,6 +24,10 @@ const cloneRepoAndCopy = async (
   destPath: string,
 ): Promise<void> => {
   const tmpFolder = path.join(os.tmpdir(), `repo_tmp_${Date.now()}`);
+  let askedXpanderHandlerOverwrite = false;
+  let overwriteXpanderHandler = false;
+  let askedAgentInstructionsOverwrite = false;
+  let overwriteAgentInstructions = false;
 
   try {
     // Clone the repository shallowly (latest commit only)
@@ -41,13 +45,43 @@ const cloneRepoAndCopy = async (
       const destFilePath = path.join(destPath, file);
 
       if (file === 'xpander_handler.py' && (await fileExists(destFilePath))) {
-        continue;
+        if (!askedXpanderHandlerOverwrite) {
+          const { overwrite } = await inquirer.prompt([
+            {
+              type: 'confirm',
+              name: 'overwrite',
+              message:
+                "'xpander_handler.py' already exists. Do you want to overwrite it?",
+              default: false,
+            },
+          ]);
+          askedXpanderHandlerOverwrite = true;
+          overwriteXpanderHandler = overwrite;
+        }
+        if (!overwriteXpanderHandler) {
+          continue;
+        }
       }
       if (
         file === 'agent_instructions.json' &&
         (await fileExists(destFilePath))
       ) {
-        continue;
+        if (!askedAgentInstructionsOverwrite) {
+          const { overwrite } = await inquirer.prompt([
+            {
+              type: 'confirm',
+              name: 'overwrite',
+              message:
+                "'agent_instructions.json' already exists. Do you want to overwrite it?",
+              default: false,
+            },
+          ]);
+          askedAgentInstructionsOverwrite = true;
+          overwriteAgentInstructions = overwrite;
+        }
+        if (!overwriteAgentInstructions) {
+          continue;
+        }
       }
       if (file === 'requirements.txt' && (await fileExists(destFilePath))) {
         // merge requirements
@@ -161,11 +195,30 @@ export async function initializeAgent(
 
     initializationSpinner.text = `Creating configuration files`;
 
-    // Set xpander config
-    await fs.writeFile(
-      path.join(currentDirectory, 'xpander_config.json'),
-      JSON.stringify(config, null, 2),
+    // Check if xpander_config.json exists and prompt user
+    const xpanderConfigPath = path.join(
+      currentDirectory,
+      'xpander_config.json',
     );
+    let shouldWriteXpanderConfig = true;
+
+    if (await fileExists(xpanderConfigPath)) {
+      const { overwrite } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'overwrite',
+          message:
+            "'xpander_config.json' already exists. Do you want to overwrite it?",
+          default: false,
+        },
+      ]);
+      shouldWriteXpanderConfig = overwrite;
+    }
+
+    // Set xpander config only if user agrees or file doesn't exist
+    if (shouldWriteXpanderConfig) {
+      await fs.writeFile(xpanderConfigPath, JSON.stringify(config, null, 2));
+    }
 
     if (!hadInstructionsFile) {
       // Set agent instructions
