@@ -168,7 +168,7 @@ export async function initializeAgent(
           type: 'confirm',
           name: 'useCurrentDir',
           message:
-            "The current directory is not empty. Proceeding will override 'requirements.txt' and add or update xpander-related files (xpander_config.json, agent_instructions.json, etc).",
+            'The current directory is not empty. You will be prompted before overwriting any existing xpander files. Continue?',
           default: true,
         },
       ]);
@@ -179,10 +179,6 @@ export async function initializeAgent(
     }
 
     initializationSpinner.text = `Initializing ${agent?.name}`;
-
-    const hadInstructionsFile = await fileExists(
-      `${currentDirectory}/agent_instructions.json`,
-    );
 
     // Clone assets into current directory
     await cloneRepoAndCopy(ASSETS_REPO, currentDirectory);
@@ -220,11 +216,15 @@ export async function initializeAgent(
       await fs.writeFile(xpanderConfigPath, JSON.stringify(config, null, 2));
     }
 
-    if (!hadInstructionsFile) {
-      // Set agent instructions
+    // Set agent instructions only if file doesn't exist (handled in cloneRepoAndCopy for existing files)
+    const agentInstructionsPath = path.join(
+      currentDirectory,
+      'agent_instructions.json',
+    );
+    if (!(await fileExists(agentInstructionsPath))) {
       try {
         await fs.writeFile(
-          path.join(currentDirectory, 'agent_instructions.json'),
+          agentInstructionsPath,
           JSON.stringify(agent.instructions, null, 2),
         );
       } catch (err) {
