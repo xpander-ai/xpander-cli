@@ -28,6 +28,8 @@ const cloneRepoAndCopy = async (
   let overwriteXpanderHandler = false;
   let askedAgentInstructionsOverwrite = false;
   let overwriteAgentInstructions = false;
+  let askedXpanderConfigOverwrite = false;
+  let overwriteXpanderConfig = false;
 
   try {
     // Clone the repository shallowly (latest commit only)
@@ -80,6 +82,24 @@ const cloneRepoAndCopy = async (
           overwriteAgentInstructions = overwrite;
         }
         if (!overwriteAgentInstructions) {
+          continue;
+        }
+      }
+      if (file === 'xpander_config.json' && (await fileExists(destFilePath))) {
+        if (!askedXpanderConfigOverwrite) {
+          const { overwrite } = await inquirer.prompt([
+            {
+              type: 'confirm',
+              name: 'overwrite',
+              message:
+                "'xpander_config.json' already exists. Do you want to overwrite it?",
+              default: false,
+            },
+          ]);
+          askedXpanderConfigOverwrite = true;
+          overwriteXpanderConfig = overwrite;
+        }
+        if (!overwriteXpanderConfig) {
           continue;
         }
       }
@@ -191,28 +211,12 @@ export async function initializeAgent(
 
     initializationSpinner.text = `Creating configuration files`;
 
-    // Check if xpander_config.json exists and prompt user
+    // Create xpander_config.json only if it doesn't exist (handled in cloneRepoAndCopy for existing files)
     const xpanderConfigPath = path.join(
       currentDirectory,
       'xpander_config.json',
     );
-    let shouldWriteXpanderConfig = true;
-
-    if (await fileExists(xpanderConfigPath)) {
-      const { overwrite } = await inquirer.prompt([
-        {
-          type: 'confirm',
-          name: 'overwrite',
-          message:
-            "'xpander_config.json' already exists. Do you want to overwrite it?",
-          default: false,
-        },
-      ]);
-      shouldWriteXpanderConfig = overwrite;
-    }
-
-    // Set xpander config only if user agrees or file doesn't exist
-    if (shouldWriteXpanderConfig) {
+    if (!(await fileExists(xpanderConfigPath))) {
       await fs.writeFile(xpanderConfigPath, JSON.stringify(config, null, 2));
     }
 
