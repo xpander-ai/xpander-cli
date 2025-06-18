@@ -39,7 +39,10 @@ const cloneRepoAndCopy = async (
     const files = await fs.readdir(tmpFolder);
 
     for (const file of files) {
-      if (['README.md', 'LICENSE', '.git', 'xpander_config.json'].includes(file)) continue;
+      if (
+        ['README.md', 'LICENSE', '.git', 'xpander_config.json'].includes(file)
+      )
+        continue;
 
       const srcPath = path.join(tmpFolder, file);
       const destFilePath = path.join(destPath, file);
@@ -196,7 +199,7 @@ export async function initializeAgent(
       currentDirectory,
       'xpander_config.json',
     );
-    
+
     let shouldWriteXpanderConfig = true;
     if (await fileExists(xpanderConfigPath)) {
       const { overwrite } = await inquirer.prompt([
@@ -210,7 +213,7 @@ export async function initializeAgent(
       ]);
       shouldWriteXpanderConfig = overwrite;
     }
-    
+
     if (shouldWriteXpanderConfig) {
       await fs.writeFile(xpanderConfigPath, JSON.stringify(config, null, 2));
     }
