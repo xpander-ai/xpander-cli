@@ -28,6 +28,10 @@ const cloneRepoAndCopy = async (
   let overwriteXpanderHandler = false;
   let askedAgentInstructionsOverwrite = false;
   let overwriteAgentInstructions = false;
+  let askedDockerfileOverwrite = false;
+  let overwriteDockerfile = false;
+  let askedDockerignoreOverwrite = false;
+  let overwriteDockerignore = false;
 
   try {
     // Clone the repository shallowly (latest commit only)
@@ -83,6 +87,42 @@ const cloneRepoAndCopy = async (
           overwriteAgentInstructions = overwrite;
         }
         if (!overwriteAgentInstructions) {
+          continue;
+        }
+      }
+      if (file === 'Dockerfile' && (await fileExists(destFilePath))) {
+        if (!askedDockerfileOverwrite) {
+          const { overwrite } = await inquirer.prompt([
+            {
+              type: 'confirm',
+              name: 'overwrite',
+              message:
+                "'Dockerfile' already exists. Do you want to overwrite it?",
+              default: false,
+            },
+          ]);
+          askedDockerfileOverwrite = true;
+          overwriteDockerfile = overwrite;
+        }
+        if (!overwriteDockerfile) {
+          continue;
+        }
+      }
+      if (file === '.dockerignore' && (await fileExists(destFilePath))) {
+        if (!askedDockerignoreOverwrite) {
+          const { overwrite } = await inquirer.prompt([
+            {
+              type: 'confirm',
+              name: 'overwrite',
+              message:
+                "'.dockerignore' already exists. Do you want to overwrite it?",
+              default: false,
+            },
+          ]);
+          askedDockerignoreOverwrite = true;
+          overwriteDockerignore = overwrite;
+        }
+        if (!overwriteDockerignore) {
           continue;
         }
       }
