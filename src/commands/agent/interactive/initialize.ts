@@ -28,8 +28,6 @@ const cloneRepoAndCopy = async (
   let overwriteXpanderHandler = false;
   let askedAgentInstructionsOverwrite = false;
   let overwriteAgentInstructions = false;
-  let askedXpanderConfigOverwrite = false;
-  let overwriteXpanderConfig = false;
 
   try {
     // Clone the repository shallowly (latest commit only)
@@ -41,7 +39,7 @@ const cloneRepoAndCopy = async (
     const files = await fs.readdir(tmpFolder);
 
     for (const file of files) {
-      if (['README.md', 'LICENSE', '.git'].includes(file)) continue;
+      if (['README.md', 'LICENSE', '.git', 'xpander_config.json'].includes(file)) continue;
 
       const srcPath = path.join(tmpFolder, file);
       const destFilePath = path.join(destPath, file);
@@ -82,24 +80,6 @@ const cloneRepoAndCopy = async (
           overwriteAgentInstructions = overwrite;
         }
         if (!overwriteAgentInstructions) {
-          continue;
-        }
-      }
-      if (file === 'xpander_config.json' && (await fileExists(destFilePath))) {
-        if (!askedXpanderConfigOverwrite) {
-          const { overwrite } = await inquirer.prompt([
-            {
-              type: 'confirm',
-              name: 'overwrite',
-              message:
-                "'xpander_config.json' already exists. Do you want to overwrite it?",
-              default: false,
-            },
-          ]);
-          askedXpanderConfigOverwrite = true;
-          overwriteXpanderConfig = overwrite;
-        }
-        if (!overwriteXpanderConfig) {
           continue;
         }
       }
@@ -211,12 +191,27 @@ export async function initializeAgent(
 
     initializationSpinner.text = `Creating configuration files`;
 
-    // Create xpander_config.json only if it doesn't exist (handled in cloneRepoAndCopy for existing files)
+    // Create xpander_config.json - prompt if it already exists
     const xpanderConfigPath = path.join(
       currentDirectory,
       'xpander_config.json',
     );
-    if (!(await fileExists(xpanderConfigPath))) {
+    
+    let shouldWriteXpanderConfig = true;
+    if (await fileExists(xpanderConfigPath)) {
+      const { overwrite } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'overwrite',
+          message:
+            "'xpander_config.json' already exists. Do you want to overwrite it?",
+          default: false,
+        },
+      ]);
+      shouldWriteXpanderConfig = overwrite;
+    }
+    
+    if (shouldWriteXpanderConfig) {
       await fs.writeFile(xpanderConfigPath, JSON.stringify(config, null, 2));
     }
 
