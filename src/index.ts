@@ -8,6 +8,7 @@ import { version } from '../package.json';
 import { agent } from './commands/agent';
 import { configureConfigureCommand } from './commands/configure';
 import { configureDeployCommand } from './commands/deploy';
+import { configureDevCommand } from './commands/dev';
 import { configureInitializeCommand } from './commands/initialize';
 import { configureInterfacesCommands } from './commands/interfaces/index';
 import {
@@ -165,6 +166,7 @@ async function main(): Promise<void> {
   configureOperationsCommand(program);
   configureDeployCommand(program);
   configureInitializeCommand(program);
+  configureDevCommand(program);
   configureLogsCommand(program);
   configureSecretsSyncCommand(program);
   agent(program);
