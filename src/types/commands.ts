@@ -11,6 +11,7 @@ export enum CommandType {
   ListJson = 'list-json',
   Tools = 'tools',
   Initialize = 'initialize',
+  Dev = 'dev',
   SecretsSync = 'secrets-sync',
   Deploy = 'deploy',
   Logs = 'logs',

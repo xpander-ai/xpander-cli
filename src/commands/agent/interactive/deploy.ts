@@ -5,17 +5,13 @@ import inquirer from 'inquirer';
 import ora from 'ora';
 import { XPanderConfig } from '../../../types';
 import { XpanderClient } from '../../../utils/client';
-import { fileExists, pathIsEmpty } from '../../../utils/custom-agents';
+import {
+  ensureAgentIsInitialized,
+  pathIsEmpty,
+} from '../../../utils/custom-agents';
 import { buildAndSaveDockerImage } from '../../../utils/custom_agents_utils/docker';
 import { uploadAndDeploy } from '../../../utils/custom_agents_utils/upload';
 import { configureLogsCommand } from '../../logs';
-
-const requiredFiles = [
-  'requirements.txt',
-  'Dockerfile',
-  'xpander_config.json',
-  'xpander_handler.py',
-];
 
 export async function deployAgent(
   client: XpanderClient,
@@ -51,17 +47,11 @@ export async function deployAgent(
     }
 
     // check for configuration and required files
-    const missingFiles: string[] = [];
-    for (const file of requiredFiles) {
-      if (!(await fileExists(`${currentDirectory}/${file}`))) {
-        missingFiles.push(file);
-      }
-    }
-
-    if (missingFiles.length !== 0) {
-      deploymentSpinner.fail(
-        'Current workdir structure is invalid, re-initialize your agent.',
-      );
+    const isInitialized = await ensureAgentIsInitialized(
+      currentDirectory,
+      deploymentSpinner,
+    );
+    if (!isInitialized) {
       return;
     }
 

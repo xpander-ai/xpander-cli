@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import ora from 'ora';
+import { startAgent } from './dev';
 import { CommandType } from '../../../types';
 import { createClient } from '../../../utils/client';
 import { getApiKey } from '../../../utils/config';
@@ -104,6 +105,10 @@ export async function interactiveAgentMode() {
               value: CommandType.Deploy,
             },
             {
+              name: 'Start your agent in debug mode',
+              value: CommandType.Dev,
+            },
+            {
               name: 'View Logs',
               value: CommandType.Logs,
             },
@@ -164,6 +169,10 @@ export async function interactiveAgentMode() {
         case CommandType.Exit:
           exitRequested = true;
           console.log(chalk.blue('\nExiting agent management. Goodbye!'));
+          break;
+
+        case CommandType.Dev:
+          await startAgent();
           break;
       }
 
