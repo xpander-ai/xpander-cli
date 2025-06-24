@@ -8,7 +8,7 @@ import { startAgent } from './agent/interactive/dev';
 export function configureDevCommand(program: Command): Command {
   const operationsCmd = program
     .command(`${CommandType.Dev}`)
-    .description('Start your agent in debug mode')
+    .description('Run your agent locally')
     .option('--profile <n>', 'Profile to use')
     .action(async () => {
       await startAgent();

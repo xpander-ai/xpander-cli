@@ -105,7 +105,7 @@ export async function interactiveAgentMode() {
               value: CommandType.Deploy,
             },
             {
-              name: 'Start your agent in debug mode',
+              name: 'Run your agent locally',
               value: CommandType.Dev,
             },
             {
