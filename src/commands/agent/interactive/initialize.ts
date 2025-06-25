@@ -181,12 +181,38 @@ export async function initializeAgent(
 
   let agentId = agentToInitialize;
   if (!agentId) {
+    // Fetch available agents for selection
+    const fetchSpinner = ora('Fetching your agents...').start();
+    const agentsList = await client.getAgents();
+    fetchSpinner.succeed('Agents loaded successfully');
+
+    if (!agentsList || agentsList.length === 0) {
+      console.log(chalk.yellow('\nNo agents found.'));
+      console.log(
+        chalk.blue('Please create an agent first using "xpander agent new"'),
+      );
+      return;
+    }
+
+    // Sort agents by creation date (newest first)
+    const agents = [...agentsList].sort((a, b) => {
+      return (
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+    });
+
+    // Create choices for the prompt
+    const agentChoices = agents.map((agent) => ({
+      name: `${agent.name} (${agent.id})`,
+      value: agent.id,
+    }));
+
     ({ agentId } = await inquirer.prompt([
       {
-        type: 'input',
+        type: 'list',
         name: 'agentId',
-        message: 'Enter the agent ID you would like to initialize:',
-        validate: (input) => (input.trim() ? true : 'Agent ID is required'),
+        message: 'Select an agent to initialize:',
+        choices: agentChoices,
       },
     ]));
   }

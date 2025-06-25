@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { configureGraphCommands } from '../agent-graph';
 import { registerDeleteCommand } from './commands/delete';
 import { registerGetCommand } from './commands/get';
+import { registerInitCommand } from './commands/init';
 import { registerListCommand } from './commands/list';
 import { registerNewCommand } from './commands/new';
 import { registerUpdateCommand } from './commands/update';
@@ -33,6 +34,7 @@ export function agent(program: Command): void {
   // Register all agent sub-commands
   registerListCommand(agentCmd);
   registerGetCommand(agentCmd);
+  registerInitCommand(agentCmd);
   registerNewCommand(agentCmd);
   registerDeleteCommand(agentCmd);
   registerUpdateCommand(agentCmd);
