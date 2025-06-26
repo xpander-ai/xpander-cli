@@ -5,6 +5,7 @@ import { registerGetCommand } from './commands/get';
 import { registerInitCommand } from './commands/init';
 import { registerListCommand } from './commands/list';
 import { registerNewCommand } from './commands/new';
+import { registerTemplatesCommand } from './commands/templates';
 import { registerUpdateCommand } from './commands/update';
 import { interactiveAgentMode } from './interactive/index';
 import { configureToolsCommands } from './tools';
@@ -36,6 +37,7 @@ export function agent(program: Command): void {
   registerGetCommand(agentCmd);
   registerInitCommand(agentCmd);
   registerNewCommand(agentCmd);
+  registerTemplatesCommand(agentCmd);
   registerDeleteCommand(agentCmd);
   registerUpdateCommand(agentCmd);
 

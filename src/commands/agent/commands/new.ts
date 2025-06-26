@@ -5,7 +5,11 @@ import ora from 'ora';
 import { CommandType } from '../../../types';
 import { XpanderClient } from '../../../utils/client';
 import { getApiKey } from '../../../utils/config';
-import { initializeAgent } from '../interactive/initialize';
+import { initializeAgentWithTemplate } from '../../../utils/template-cloner';
+import {
+  selectTemplate,
+  displayTemplateInfo,
+} from '../../../utils/template-selector';
 
 /**
  * Register new command to create agents
@@ -139,12 +143,35 @@ export function registerNewCommand(agentCmd: Command): void {
             type: 'confirm',
             name: 'shouldInitialize',
             message:
-              'Do you want to load this agent into your current workdir?',
+              'Do you want to initialize this agent with a template in your current directory?',
             default: true,
           },
         ]);
+
         if (shouldInitialize) {
-          await initializeAgent(client, createdAgent.id);
+          try {
+            // Template selection
+            const selectedTemplate = await selectTemplate();
+            displayTemplateInfo(selectedTemplate);
+
+            // Initialize agent with selected template
+            await initializeAgentWithTemplate(
+              client,
+              createdAgent.id,
+              selectedTemplate,
+            );
+          } catch (templateError: any) {
+            console.error(
+              chalk.red('❌ Template initialization failed:'),
+              templateError.message,
+            );
+            console.log(
+              chalk.yellow(
+                'You can initialize the agent later using: xpander agent init ' +
+                  createdAgent.id,
+              ),
+            );
+          }
         }
       } catch (error: any) {
         if (error.status === 403) {
