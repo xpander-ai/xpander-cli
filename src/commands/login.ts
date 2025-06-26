@@ -12,6 +12,7 @@ import {
   setCurrentProfile,
   listProfiles,
   createProfile,
+  getApiKey,
 } from '../utils/config';
 
 // The validation functions and interface have been removed as they're no longer used in this file
@@ -25,45 +26,103 @@ export function configureLoginCommand(program: Command): void {
     .description('Log in to Xpander')
     .option('--profile <name>', 'Profile name to use')
     .action(async (options) => {
-      const spinner = ora('Authorizing').start();
-      const { organizationId, apiKey, firstName } = await waitForAuthCallback();
+      let profileName = options.profile || 'default';
+      const existingProfiles = listProfiles();
 
-      try {
-        const isValid = true; // Validation will happen when using the API
+      // Check if profile already exists
+      if (existingProfiles.includes(profileName)) {
+        const existingApiKey = getApiKey(profileName);
+        const existingOrgId = getOrganizationId(profileName);
 
-        if (isValid) {
-          // Save the API key to the profile
-          const profileName = options.profile || 'default';
-          setCurrentProfile(profileName);
-          setApiKey(apiKey, profileName);
+        if (existingApiKey) {
+          console.log(
+            chalk.yellow(`Profile '${profileName}' already exists with:`),
+          );
+          console.log(
+            chalk.yellow(`  Organization ID: ${existingOrgId || 'Not set'}`),
+          );
+          console.log(
+            chalk.yellow(`  API Key: ${existingApiKey.substring(0, 8)}...`),
+          );
 
-          if (organizationId) {
-            setOrganizationId(organizationId, profileName);
-          } else {
-            console.log(chalk.yellow('No organization ID provided.'));
-            console.log(
-              chalk.yellow(
-                'You may need to set it later for certain operations.',
-              ),
-            );
+          const { action } = await inquirer.prompt([
+            {
+              type: 'list',
+              name: 'action',
+              message: 'What would you like to do?',
+              choices: [
+                { name: 'Overwrite existing profile', value: 'overwrite' },
+                {
+                  name: 'Create new profile with different name',
+                  value: 'new',
+                },
+                { name: 'Cancel login', value: 'cancel' },
+              ],
+            },
+          ]);
+
+          if (action === 'cancel') {
+            console.log('Login cancelled.');
+            process.exit(0);
           }
 
-          console.log(`
+          if (action === 'new') {
+            const { newProfileName } = await inquirer.prompt([
+              {
+                type: 'input',
+                name: 'newProfileName',
+                message: 'Enter new profile name:',
+                validate: (input: string) => {
+                  if (!input.trim()) return 'Profile name cannot be empty';
+                  if (existingProfiles.includes(input))
+                    return 'Profile already exists';
+                  return true;
+                },
+              },
+            ]);
+            profileName = newProfileName;
+          }
+        }
+      }
+
+      const spinner = ora('Authorizing').start();
+
+      try {
+        const { organizationId, apiKey, firstName } =
+          await waitForAuthCallback();
+
+        // Save credentials to profile
+        setCurrentProfile(profileName);
+        setApiKey(apiKey, profileName);
+
+        if (organizationId) {
+          setOrganizationId(organizationId, profileName);
+        } else {
+          console.log(chalk.yellow('No organization ID provided.'));
+          console.log(
+            chalk.yellow(
+              'You may need to set it later for certain operations.',
+            ),
+          );
+        }
+
+        console.log(`
 Hi${firstName ? ' ' + firstName : ''}, Welcome to xpander!
+Profile: ${profileName}
 Your organization id: ${organizationId}
 Your personal API Key is: ${apiKey}
 
-I've created default profile configured in ~/.xpander
-  `);
-          spinner.stop();
-        } else {
-          spinner.fail('API key validation failed');
-          console.log(chalk.red('Invalid API key. Please try again.'));
-          process.exit(1);
-        }
+Profile saved to ~/.xpander
+        `);
+        spinner.stop();
+
+        // Ultimate solution: force exit with kill signal
+        setTimeout(() => {
+          process.kill(process.pid, 'SIGKILL');
+        }, 100);
       } catch (error: any) {
-        spinner.fail('API key validation failed');
-        console.log(chalk.red('Error during validation:'), error.message);
+        spinner.fail('Login failed');
+        console.log(chalk.red('Error during login:'), error.message);
         process.exit(1);
       }
     });

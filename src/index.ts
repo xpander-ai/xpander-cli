@@ -214,7 +214,16 @@ async function main(): Promise<void> {
       // Set the current profile if specified
       if (globalOptions.profile) {
         const availableProfiles = listProfiles();
-        if (availableProfiles.includes(globalOptions.profile)) {
+
+        // Skip profile validation for login and configure commands since they can create profiles
+        const isLoginCommand = process.argv.includes('login');
+        const isConfigureCommand = process.argv.includes('configure');
+
+        if (
+          availableProfiles.includes(globalOptions.profile) ||
+          isLoginCommand ||
+          isConfigureCommand
+        ) {
           // We set it but we don't save it to config, just for this command execution
           process.env.XPANDER_CURRENT_PROFILE = globalOptions.profile;
         } else {
