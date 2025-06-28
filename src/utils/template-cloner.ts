@@ -57,10 +57,25 @@ export async function cloneTemplate(
     const files = await fs.readdir(srcPath);
 
     for (const file of files) {
+      // Skip files and folders that shouldn't be copied
+      const baseExclusions = [
+        'README.md',
+        'LICENSE',
+        '.git',
+        'xpander_config.json',
+        'templates',
+      ];
+
+      // If this is the base template (no folderName), also exclude all template folders
+      const isBaseTemplate = !template.folderName;
+      const isTemplateFolder = file.endsWith('-template');
+
       if (
-        ['README.md', 'LICENSE', '.git', 'xpander_config.json'].includes(file)
-      )
+        baseExclusions.includes(file) ||
+        (isBaseTemplate && isTemplateFolder)
+      ) {
         continue;
+      }
 
       const fileSrcPath = path.join(srcPath, file);
       const destFilePath = path.join(destPath, file);
@@ -238,20 +253,45 @@ export async function initializeAgentWithTemplate(
     initializationSpinner.info(`Agent ${agent?.name} retrieved successfully`);
 
     // Check if current folder is empty
-    const currentDirectory = process.cwd();
+    let currentDirectory = process.cwd();
     if (!(await pathIsEmpty(currentDirectory))) {
-      const { useCurrentDir } = await inquirer.prompt([
+      const { action } = await inquirer.prompt([
         {
-          type: 'confirm',
-          name: 'useCurrentDir',
+          type: 'list',
+          name: 'action',
           message:
-            'The current directory is not empty. You will be prompted before overwriting any existing files. Continue?',
-          default: true,
+            'The current directory is not empty. What would you like to do?',
+          choices: [
+            {
+              name: 'Continue in current directory (you will be prompted before overwriting files)',
+              value: 'continue',
+            },
+            {
+              name: `Create a new subfolder "${agent?.name || 'agent'}"`,
+              value: 'subfolder',
+            },
+            {
+              name: 'Cancel initialization',
+              value: 'cancel',
+            },
+          ],
+          default: 'subfolder',
         },
       ]);
-      if (!useCurrentDir) {
+
+      if (action === 'cancel') {
         initializationSpinner.info('Initialization aborted.');
         return;
+      }
+
+      if (action === 'subfolder') {
+        const folderName = agent?.name || 'agent';
+        const newDirectory = path.join(currentDirectory, folderName);
+
+        // Create the subfolder
+        await fs.mkdir(newDirectory, { recursive: true });
+        currentDirectory = newDirectory;
+        console.log(chalk.green(`✓ Created subfolder: ${folderName}`));
       }
     }
 

@@ -25,12 +25,55 @@ export function configureLoginCommand(program: Command): void {
     .command(CommandType.Login)
     .description('Log in to Xpander')
     .option('--profile <name>', 'Profile name to use')
+    .option('--new', 'Create a new profile even if one exists')
     .action(async (options) => {
       let profileName = options.profile || 'default';
       const existingProfiles = listProfiles();
 
-      // Check if profile already exists
-      if (existingProfiles.includes(profileName)) {
+      // Check if profile already exists and --new flag not provided
+      if (existingProfiles.includes(profileName) && !options.new) {
+        const existingApiKey = getApiKey(profileName);
+        const existingOrgId = getOrganizationId(profileName);
+
+        if (existingApiKey) {
+          // Just display the existing profile info
+          console.log(chalk.cyan('\n🚀 Welcome to Xpander!'));
+          console.log(chalk.gray('━'.repeat(50)));
+          console.log();
+          console.log(
+            chalk.white(
+              `  Profile: ${chalk.bold(profileName)}${profileName === getCurrentProfile() ? chalk.gray(' (current)') : ''}`,
+            ),
+          );
+          console.log(
+            chalk.white(
+              `  Organization ID: ${chalk.bold(existingOrgId || 'Not set')}`,
+            ),
+          );
+          console.log(chalk.white(`  API Key: ${chalk.bold(existingApiKey)}`));
+          console.log();
+          console.log(chalk.gray('━'.repeat(50)));
+          console.log();
+          console.log(chalk.blue('💡 Quick Start Tips:'));
+          console.log(
+            chalk.gray('  • Initialize your first agent: ') +
+              chalk.yellow('xpander agent init'),
+          );
+          console.log(
+            chalk.gray('  • Visit the platform: ') +
+              chalk.blue('https://app.xpander.ai'),
+          );
+          console.log(
+            chalk.gray('  • Create new profile: ') +
+              chalk.yellow('xpander login --new'),
+          );
+          console.log();
+          return;
+        }
+      }
+
+      // Check if profile already exists with --new flag or prompting flow
+      if (existingProfiles.includes(profileName) && options.new) {
         const existingApiKey = getApiKey(profileName);
         const existingOrgId = getOrganizationId(profileName);
 
@@ -106,14 +149,41 @@ export function configureLoginCommand(program: Command): void {
           );
         }
 
-        console.log(`
-Hi${firstName ? ' ' + firstName : ''}, Welcome to xpander!
-Profile: ${profileName}
-Your organization id: ${organizationId}
-Your personal API Key is: ${apiKey}
-
-Profile saved to ~/.xpander
-        `);
+        // Display welcome message with enhanced formatting
+        console.log(chalk.cyan('\n🚀 Welcome to Xpander!'));
+        console.log(chalk.gray('━'.repeat(50)));
+        console.log();
+        console.log(
+          chalk.white(
+            `  Hi${firstName ? ' ' + chalk.bold(firstName) : ''}! You've successfully logged in.`,
+          ),
+        );
+        console.log();
+        console.log(chalk.white(`  Profile: ${chalk.bold(profileName)}`));
+        console.log(
+          chalk.white(
+            `  Organization ID: ${chalk.bold(organizationId || 'Not set')}`,
+          ),
+        );
+        console.log(chalk.white(`  API Key: ${chalk.bold(apiKey)}`));
+        console.log();
+        console.log(chalk.gray('━'.repeat(50)));
+        console.log();
+        console.log(chalk.blue('💡 Quick Start Tips:'));
+        console.log(
+          chalk.gray('  • Initialize your first agent: ') +
+            chalk.yellow('xpander agent init'),
+        );
+        console.log(
+          chalk.gray('  • Visit the platform: ') +
+            chalk.blue('https://app.xpander.ai'),
+        );
+        console.log(
+          chalk.gray('  • Switch profiles: ') +
+            chalk.yellow('xpander profile --switch <name>'),
+        );
+        console.log();
+        console.log(chalk.green('✓ Profile saved to ~/.xpander'));
         spinner.stop();
 
         // Ultimate solution: force exit with kill signal

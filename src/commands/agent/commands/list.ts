@@ -15,6 +15,7 @@ export function registerListCommand(agentCmd: Command): void {
     .description('List all agents')
     .option('--json', 'Output in JSON format')
     .option('--all', 'Show all agents, including inactive ones')
+    .option('--full', 'Show full API response with all fields')
     .option('--profile <n>', 'Profile to use')
     .action(async (options) => {
       try {
@@ -50,18 +51,19 @@ export function registerListCommand(agentCmd: Command): void {
         const filteredAgents = options.all
           ? agentsList
           : agentsList.filter((agentItem) => {
-              // 1. Must be active
-              if (agentItem.status !== 'ACTIVE') return false;
-
-              // 2. Must have multiple tools (this is the key insight from our analysis)
-              if (!agentItem.tools || agentItem.tools.length <= 1) return false;
-
-              return true;
+              // Only filter by active status
+              return agentItem.status === 'ACTIVE';
             });
 
         // Use JSON format if requested
         if (options.json) {
           console.log(JSON.stringify(filteredAgents, null, 2));
+          return;
+        }
+
+        // Show full API response if requested
+        if (options.full) {
+          console.log(JSON.stringify(agentsList, null, 2));
           return;
         }
 
@@ -84,20 +86,23 @@ export function registerListCommand(agentCmd: Command): void {
           }
 
           // Process data for better table display
+          const isStaging = process?.env?.IS_STG === 'true';
+          const baseUrl = isStaging
+            ? 'https://stg.app.xpander.ai'
+            : 'https://app.xpander.ai';
+
           return {
-            id: agentItem.id, // Show full ID as requested
             name: agentItem.name,
-            model: agentItem.model_name || '',
-            tools_count: agentItem.tools ? agentItem.tools.length : 0,
             created_at: createdDate,
+            link: `${baseUrl}/agents/${agentItem.id}`,
           };
         });
 
         // Display in table format
         formatOutput(formattedAgents, {
           title: '', // Remove title as we're adding our own
-          columns: ['id', 'name', 'model', 'tools_count', 'created_at'],
-          headers: ['ID', 'Name', 'Model', 'Tools', 'Created'],
+          columns: ['name', 'created_at', 'link'],
+          headers: ['Name', 'Created', 'Link'],
         });
 
         console.log('──────────────────────────────────────────────────');

@@ -13,7 +13,9 @@ import { initializeAgent } from '../interactive/initialize';
 export function registerInitCommand(parentCommand: Command): void {
   parentCommand
     .command('init [agent-id]')
-    .description('Initialize an existing agent into current directory')
+    .description(
+      "Initialize existing agent locally (downloads base template + syncs agent's config/instructions from backend)",
+    )
     .option('--profile <n>', 'Profile to use')
     .option('--template', 'Use template selection for initialization')
     .action(async (agentId, options) => {

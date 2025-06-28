@@ -40,18 +40,33 @@ export function registerNewCommand(agentCmd: Command): void {
           process.exit(1);
         }
 
+        // Create a more appealing welcome screen
+        console.log('\n');
+        console.log(chalk.bold.blue('✨ Agent Creation Wizard ✨'));
+        console.log(chalk.dim('─'.repeat(50)));
+        console.log(
+          chalk.yellow('Create a powerful AI agent for your organization'),
+        );
+        console.log(chalk.dim('─'.repeat(50)));
+        console.log('\n');
+
+        // First, select template
+        console.log(chalk.cyan('Step 1: Choose a template for your agent\n'));
+        let selectedTemplate;
+        try {
+          selectedTemplate = await selectTemplate();
+          displayTemplateInfo(selectedTemplate);
+        } catch (templateError: any) {
+          console.error(
+            chalk.red('❌ Template selection cancelled or failed:'),
+            templateError.message,
+          );
+          process.exit(1);
+        }
+
         // If no name provided, prompt for it
         if (!name) {
-          // Create a more appealing welcome screen
-          console.log('\n');
-          console.log(chalk.bold.blue('✨ Agent Creation Wizard ✨'));
-          console.log(chalk.dim('─'.repeat(50)));
-          console.log(
-            chalk.yellow('Create a powerful AI agent for your organization'),
-          );
-          console.log(chalk.dim('─'.repeat(50)));
-          console.log('\n');
-
+          console.log(chalk.cyan('\nStep 2: Name your agent\n'));
           const nameAnswer = await inquirer.prompt([
             {
               type: 'input',
@@ -138,40 +153,25 @@ export function registerNewCommand(agentCmd: Command): void {
         console.log(chalk.dim('─'.repeat(50)));
         console.log(chalk.green.bold('\n✅ Agent creation complete!\n'));
 
-        const { shouldInitialize } = await inquirer.prompt([
-          {
-            type: 'confirm',
-            name: 'shouldInitialize',
-            message:
-              'Do you want to initialize this agent with a template in your current directory?',
-            default: true,
-          },
-        ]);
-
-        if (shouldInitialize) {
-          try {
-            // Template selection
-            const selectedTemplate = await selectTemplate();
-            displayTemplateInfo(selectedTemplate);
-
-            // Initialize agent with selected template
-            await initializeAgentWithTemplate(
-              client,
-              createdAgent.id,
-              selectedTemplate,
-            );
-          } catch (templateError: any) {
-            console.error(
-              chalk.red('❌ Template initialization failed:'),
-              templateError.message,
-            );
-            console.log(
-              chalk.yellow(
-                'You can initialize the agent later using: xpander agent init ' +
-                  createdAgent.id,
-              ),
-            );
-          }
+        // Now initialize with the selected template
+        console.log(chalk.cyan('Step 3: Initialize agent with template\n'));
+        try {
+          await initializeAgentWithTemplate(
+            client,
+            createdAgent.id,
+            selectedTemplate,
+          );
+        } catch (templateError: any) {
+          console.error(
+            chalk.red('❌ Template initialization failed:'),
+            templateError.message,
+          );
+          console.log(
+            chalk.yellow(
+              'You can initialize the agent later using: xpander agent init ' +
+                createdAgent.id,
+            ),
+          );
         }
       } catch (error: any) {
         if (error.status === 403) {
