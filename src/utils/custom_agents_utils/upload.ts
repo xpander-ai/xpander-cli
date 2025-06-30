@@ -1,13 +1,11 @@
 import fs from 'fs';
 import axios from 'axios';
-import FormData from 'form-data';
 import ora from 'ora';
 import ProgressStream from 'progress-stream';
 import { XpanderClient } from '../client';
 
-const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB
 const BASE_URL = 'https://deployment-manager.xpander.ai';
-const BASE_URL_STG = 'https://deployment-manager.stg.xpander.ai';
+const BASE_URL_STG = 'https://deployment-manager.xpander.ai';
 
 export const uploadAndDeploy = async (
   deploymentSpinner: ora.Ora,
@@ -16,62 +14,97 @@ export const uploadAndDeploy = async (
   imagePath: string,
 ): Promise<any> => {
   const apiURL = client.isStg ? BASE_URL_STG : BASE_URL;
-  const endpoint = `${apiURL}/${client.orgId}/registry/agents/${agentId}/custom_workers/deploy`;
   const fileSize = fs.statSync(imagePath).size;
-  const fileName = `${client.orgId}_worker_${agentId}.tar.gz`;
+  const fileStream = fs.createReadStream(imagePath);
 
-  const fileStream = fs.createReadStream(imagePath, {
-    highWaterMark: CHUNK_SIZE,
-  });
-  let start = 0;
-  let chunkIndex = 0;
+  try {
+    // Step 1: Get upload URL
+    deploymentSpinner.text = 'Requesting upload URL...';
 
-  for await (const chunk of fileStream) {
-    const end = start + chunk.length - 1;
-    const contentRange = `bytes ${start}-${end}/${fileSize}`;
+    const uploadLinkEndpoint = `${apiURL}/${client.orgId}/registry/agents/${agentId}/custom_workers/upload_link`;
 
-    // Use ProgressStream to wrap chunk as stream
-    const chunkStream = ProgressStream({
-      length: chunk.length,
+    const uploadLinkRes = await axios.get(uploadLinkEndpoint, {
+      headers: {
+        'x-api-key': client.apiKey,
+      },
+    });
+
+    const { link: uploadUrl } = uploadLinkRes.data;
+    if (!uploadUrl) {
+      console.error(
+        '❌ No upload URL returned in response:',
+        uploadLinkRes.data,
+      );
+      throw new Error('No upload URL received from server.');
+    }
+
+    // Step 2: Upload to xpander.ai
+    deploymentSpinner.text = 'Uploading to xpander.ai...';
+
+    const progressStream = ProgressStream({
+      length: fileSize,
       time: 100,
     });
 
-    chunkStream.on('progress', () => {
-      const percentNumber = Math.min(100, ((end + 1) / fileSize) * 100);
-      if (percentNumber >= 95) {
+    progressStream.on('progress', (progress) => {
+      const percent = progress.percentage.toFixed(2);
+      if (progress.percentage >= 95) {
         deploymentSpinner.text = 'Finalizing the deployment';
       } else {
-        const percent = percentNumber.toFixed(2);
         deploymentSpinner.text = `Upload status: ${percent}%`;
       }
     });
 
-    // Write chunk to progress stream
-    chunkStream.end(chunk);
+    fileStream.pipe(progressStream);
 
-    const form = new FormData();
-    form.append('file', chunkStream, {
-      filename: fileName,
-      contentType: 'application/octet-stream',
-      knownLength: chunk.length,
-    });
-
-    const response = await axios.post(endpoint, form, {
+    const uploadRes = await axios.put(uploadUrl, progressStream, {
       headers: {
-        'Content-Range': contentRange,
-        'x-api-key': client.apiKey,
-        ...form.getHeaders(),
+        'Content-Type': 'application/gzip',
+        'Content-Length': fileSize,
       },
-      maxContentLength: Infinity,
       maxBodyLength: Infinity,
+      maxContentLength: Infinity,
+      validateStatus: () => true,
     });
 
-    start = end + 1;
-    chunkIndex++;
-
-    if (response.data.complete) {
-      deploymentSpinner.succeed('✅ Upload complete');
-      return response.data;
+    if (uploadRes.status !== 200) {
+      console.error('❌ Upload failed with body:', uploadRes.data);
+      throw new Error(`xpander.ai upload failed: ${uploadRes.status}`);
     }
+
+    // Step 3: Apply uploaded worker
+    const applyEndpoint = `${apiURL}/${client.orgId}/registry/agents/${agentId}/custom_workers/start`;
+
+    deploymentSpinner.text = 'Applying uploaded worker...';
+
+    const applyRes = await axios.post(
+      applyEndpoint,
+      {},
+      {
+        headers: {
+          'x-api-key': client.apiKey,
+        },
+      },
+    );
+
+    deploymentSpinner.succeed('✅ Upload and deployment complete');
+    return applyRes.data;
+  } catch (err: any) {
+    deploymentSpinner.fail('❌ Upload failed');
+
+    if (axios.isAxiosError(err)) {
+      console.error('❌ Axios error:', {
+        message: err.message,
+        code: err.code,
+        responseStatus: err.response?.status,
+        responseData: err.response?.data,
+        requestHeaders: err.config?.headers,
+        requestUrl: err.config?.url,
+      });
+    } else {
+      console.error('❌ Unexpected error:', err);
+    }
+
+    throw new Error(err?.message || 'Unknown error during upload');
   }
 };
