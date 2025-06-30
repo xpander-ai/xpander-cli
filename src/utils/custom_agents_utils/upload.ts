@@ -5,7 +5,7 @@ import ProgressStream from 'progress-stream';
 import { XpanderClient } from '../client';
 
 const BASE_URL = 'https://deployment-manager.xpander.ai';
-const BASE_URL_STG = 'https://deployment-manager.xpander.ai';
+const BASE_URL_STG = 'https://deployment-manager.stg.xpander.ai';
 
 export const uploadAndDeploy = async (
   deploymentSpinner: ora.Ora,
