@@ -134,6 +134,10 @@
       "type": "runtime"
     },
     {
+      "name": "eventsource-parser",
+      "type": "runtime"
+    },
+    {
       "name": "express",
       "type": "runtime"
     },
@@ -161,6 +165,10 @@
     },
     {
       "name": "progress-stream",
+      "type": "runtime"
+    },
+    {
+      "name": "undici",
       "type": "runtime"
     },
     {

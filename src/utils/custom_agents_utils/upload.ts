@@ -6,6 +6,7 @@ import { XpanderClient } from '../client';
 
 const BASE_URL = 'https://deployment-manager.xpander.ai';
 const BASE_URL_STG = 'https://deployment-manager.stg.xpander.ai';
+// const BASE_URL_STG = 'http://localhost:9015'; // dont remove, for local work.
 
 export const uploadAndDeploy = async (
   deploymentSpinner: ora.Ora,
@@ -49,7 +50,7 @@ export const uploadAndDeploy = async (
     progressStream.on('progress', (progress) => {
       const percent = progress.percentage.toFixed(2);
       if (progress.percentage >= 95) {
-        deploymentSpinner.text = 'Finalizing the deployment';
+        deploymentSpinner.text = 'Finalizing image upload';
       } else {
         deploymentSpinner.text = `Upload status: ${percent}%`;
       }
@@ -73,7 +74,7 @@ export const uploadAndDeploy = async (
     }
 
     // Step 3: Apply uploaded worker
-    const applyEndpoint = `${apiURL}/${client.orgId}/registry/agents/${agentId}/custom_workers/start`;
+    const applyEndpoint = `${apiURL}/${client.orgId}/registry/agents/${agentId}/custom_workers/apply`;
 
     deploymentSpinner.text = 'Applying uploaded worker...';
 
