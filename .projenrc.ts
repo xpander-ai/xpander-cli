@@ -60,6 +60,8 @@ const project = new typescript.TypeScriptProject({
     'form-data',
     'express',
     'open',
+    'undici',
+    'eventsource-parser',
   ],
 
   // Development dependencies

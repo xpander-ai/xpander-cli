@@ -1,60 +1,56 @@
-import axios from 'axios';
+import { createParser } from 'eventsource-parser';
 import ora from 'ora';
+import { request } from 'undici';
 import { XpanderClient } from '../client';
 
+/** Deployment-manager origins */
 const BASE_URL = 'https://deployment-manager.xpander.ai';
 const BASE_URL_STG = 'https://deployment-manager.stg.xpander.ai';
+// const BASE_URL_STG = 'http://localhost:9015'; // dont remove, for local work.
 
 /**
- * Streams the logs for a given custom worker.
+ * Stream **live** logs from a custom-worker via Server-Sent Events.
  *
- * Only **new** log lines are printed to STDOUT so the terminal stays clean and
- * `ora` doesn’t re‑render the entire buffer on every poll (which causes the
- * flickering you noticed). The spinner itself is left with a single static
- * caption so it shows activity without thrashing the screen.
+ * - Uses an `x-api-key` header (no query-param leak)
+ * - Works in plain Node (no browser polyfills)
+ * - Zero 3rd-party globals; compiles cleanly in strict TS configs
  */
-export const streamLogs = async (
-  logsSpinner: ora.Ora,
+export async function streamLogs(
+  spinner: ora.Ora,
   client: XpanderClient,
   agentId: string,
-): Promise<void> => {
-  const apiURL = client.isStg ? BASE_URL_STG : BASE_URL;
-  const endpoint = `${apiURL}/${client.orgId}/registry/agents/${agentId}/custom_workers/logs`;
+): Promise<void> {
+  const root = client.isStg ? BASE_URL_STG : BASE_URL;
+  const url = `${root}/${client.orgId}/registry/agents/${agentId}/custom_workers/logs`;
 
-  // Track every line we have already printed.
-  const seen = new Set<string>();
+  spinner.text = 'Waiting for logs…';
 
-  // Give the spinner a stable, one‑line caption and leave it alone afterwards.
-  logsSpinner.text = 'Streaming logs…';
+  /* Open the SSE connection */
+  const { body } = await request(url, {
+    method: 'GET',
+    headers: {
+      'x-api-key': client.apiKey,
+      accept: 'text/event-stream',
+      'cache-control': 'no-cache',
+    },
+    bodyTimeout: 0,
+    headersTimeout: 0,
+  });
 
-  const fetchLogs = async (): Promise<void> => {
-    try {
-      const res = await axios.get<string[]>(endpoint, {
-        headers: { 'x-api-key': client.apiKey },
-        timeout: 60000,
-      });
+  /* Parse the stream, line-by-line */
+  const parser = createParser({
+    /** Every line emitted by the server arrives here */
+    onEvent(evt: any) {
+      if (!!evt?.data) process.stdout.write(`${evt.data}\n`);
+    },
+    /** Optional: handle server-requested retry delays */
+    onRetry(delay: number) {
+      spinner.info(`server requested reconnect in ${delay} ms`);
+    },
+  });
 
-      if (Array.isArray(res.data)) {
-        for (const line of res.data) {
-          if (!seen.has(line)) {
-            seen.add(line);
-            process.stdout.write(`${line}\n`); // print only the new line
-          }
-        }
-      }
-    } catch (error: any) {
-      if (error.response && error.response.status === 404) {
-        // No logs yet – silently ignore so we don’t spam the user.
-      } else {
-        logsSpinner.fail(`Error fetching logs: ${error.message}`);
-        throw error; // Bubble up so callers can decide what to do.
-      }
-    }
-  };
-
-  // Poll every two seconds until the caller aborts (Ctrl‑C or AbortController).
-  while (true) {
-    await fetchLogs();
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+  /* Feed the readable stream into the parser */
+  for await (const chunk of body) {
+    parser.feed(chunk.toString('utf-8'));
   }
-};
+}
