@@ -9,8 +9,8 @@ import {
   ensureAgentIsInitialized,
   pathIsEmpty,
 } from '../../../utils/custom-agents';
+import { uploadAndDeploy } from '../../../utils/custom_agents_utils/deploymentManagement';
 import { buildAndSaveDockerImage } from '../../../utils/custom_agents_utils/docker';
-import { uploadAndDeploy } from '../../../utils/custom_agents_utils/upload';
 import { configureLogsCommand } from '../../logs';
 
 export async function deployAgent(
