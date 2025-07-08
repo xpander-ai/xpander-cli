@@ -17,7 +17,9 @@ import {
 } from './commands/login';
 import { configureLogsCommand } from './commands/logs';
 import { configureOperationsCommand } from './commands/operations/index';
+import { configureRestartCommand } from './commands/restart';
 import { configureSecretsSyncCommand } from './commands/secrets-sync';
+import { configureStopCommand } from './commands/stop';
 import { allCommands } from './types';
 import { displayBanner } from './utils/banner';
 import { createClient } from './utils/client';
@@ -165,6 +167,8 @@ async function main(): Promise<void> {
   configureInterfacesCommands(program);
   configureOperationsCommand(program);
   configureDeployCommand(program);
+  configureRestartCommand(program);
+  configureStopCommand(program);
   configureInitializeCommand(program);
   configureDevCommand(program);
   configureLogsCommand(program);

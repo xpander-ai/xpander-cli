@@ -14,6 +14,8 @@ export enum CommandType {
   Dev = 'dev',
   SecretsSync = 'secrets-sync',
   Deploy = 'deploy',
+  Restart = 'restart',
+  Stop = 'stop',
   Logs = 'logs',
   Exit = 'exit',
   // Crud

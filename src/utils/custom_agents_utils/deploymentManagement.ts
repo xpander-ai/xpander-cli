@@ -109,3 +109,92 @@ export const uploadAndDeploy = async (
     throw new Error(err?.message || 'Unknown error during upload');
   }
 };
+
+/**
+ * Restart a custom worker deployment
+ * This automatically stops the current deployment and starts a new one
+ */
+export const restartDeployment = async (
+  spinner: ora.Ora,
+  client: XpanderClient,
+  agentId: string,
+): Promise<any> => {
+  const apiURL = client.isStg ? BASE_URL_STG : BASE_URL;
+  const startEndpoint = `${apiURL}/${client.orgId}/registry/agents/${agentId}/custom_workers/start`;
+
+  try {
+    spinner.text = 'Restarting deployment...';
+
+    const restartRes = await axios.post(
+      startEndpoint,
+      {},
+      {
+        headers: {
+          'x-api-key': client.apiKey,
+        },
+      },
+    );
+
+    spinner.succeed('✅ Deployment restarted successfully');
+    return restartRes.data;
+  } catch (err: any) {
+    spinner.fail('❌ Restart failed');
+
+    if (axios.isAxiosError(err)) {
+      console.error('❌ Axios error:', {
+        message: err.message,
+        code: err.code,
+        responseStatus: err.response?.status,
+        responseData: err.response?.data,
+        requestHeaders: err.config?.headers,
+        requestUrl: err.config?.url,
+      });
+    } else {
+      console.error('❌ Unexpected error:', err);
+    }
+
+    throw new Error(err?.message || 'Unknown error during restart');
+  }
+};
+
+/**
+ * Stop a custom worker deployment
+ */
+export const stopDeployment = async (
+  spinner: ora.Ora,
+  client: XpanderClient,
+  agentId: string,
+): Promise<any> => {
+  const apiURL = client.isStg ? BASE_URL_STG : BASE_URL;
+  const stopEndpoint = `${apiURL}/${client.orgId}/registry/agents/${agentId}/custom_workers/stop`;
+
+  try {
+    spinner.text = 'Stopping deployment...';
+
+    const stopRes = await axios.delete(stopEndpoint, {
+      headers: {
+        'x-api-key': client.apiKey,
+      },
+    });
+
+    spinner.succeed('✅ Deployment stopped successfully');
+    return stopRes.data;
+  } catch (err: any) {
+    spinner.fail('❌ Stop failed');
+
+    if (axios.isAxiosError(err)) {
+      console.error('❌ Axios error:', {
+        message: err.message,
+        code: err.code,
+        responseStatus: err.response?.status,
+        responseData: err.response?.data,
+        requestHeaders: err.config?.headers,
+        requestUrl: err.config?.url,
+      });
+    } else {
+      console.error('❌ Unexpected error:', err);
+    }
+
+    throw new Error(err?.message || 'Unknown error during stop');
+  }
+};
