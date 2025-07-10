@@ -45,23 +45,7 @@ export const waitForAuthCallback = async (): Promise<AuthResult> => {
 
       const appUrl = isStg ? APP_URL_STG : APP_URL;
 
-      res.send(`
-        <html>
-          <body>
-            <p>Authentication successful! Attempting to close the window...</p>
-            <button onclick="window.close()">Click here if it doesn't close automatically</button>
-            <script>
-              window.onload = () => {
-                window.close();
-                setTimeout(() => {
-                  // If window wasn't closed, redirect to app
-                  window.location.href = "${appUrl}";
-                }, 3000); // 3 seconds
-              };
-            </script>
-          </body>
-        </html>
-      `);
+      res.redirect(`${appUrl}/auth-completed`);
 
       // Immediately resolve and aggressively close server
       cleanup();
