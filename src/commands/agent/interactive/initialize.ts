@@ -229,6 +229,38 @@ export async function initializeAgent(
   }
   agentId = agentId!;
 
+  // Ask for template selection
+  const { useTemplate } = await inquirer.prompt([
+    {
+      type: 'confirm',
+      name: 'useTemplate',
+      message: 'Do you want to use a template for initialization?',
+      default: false,
+    },
+  ]);
+
+  if (useTemplate) {
+    // Use template-based initialization
+    const { selectTemplate } = await import('../../../utils/template-selector');
+    const { initializeAgentWithTemplate } = await import(
+      '../../../utils/template-cloner'
+    );
+
+    try {
+      const selectedTemplate = await selectTemplate();
+      const { displayTemplateInfo } = await import(
+        '../../../utils/template-selector'
+      );
+      displayTemplateInfo(selectedTemplate);
+      await initializeAgentWithTemplate(client, agentId, selectedTemplate);
+      return;
+    } catch (error: any) {
+      console.error('Template initialization failed:', error.message);
+      return;
+    }
+  }
+
+  // Continue with standard initialization
   const initializationSpinner = ora(`Retrieving agent "${agentId}"...`).start();
   try {
     const agent = await client.getAgent(agentId);
