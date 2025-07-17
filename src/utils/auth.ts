@@ -47,19 +47,16 @@ export const waitForAuthCallback = async (): Promise<AuthResult> => {
 
       res.redirect(`${appUrl}/auth-completed`);
 
-      // Immediately resolve and aggressively close server
-      cleanup();
-
-      // Force close all connections first
-      if (server.closeAllConnections) {
-        server.closeAllConnections();
-      }
-
-      // Close server without waiting for callback
-      server.close();
-
-      // Resolve immediately
-      resolve({ organizationId, apiKey, firstName });
+      // Wait for the response to be sent before cleanup/closing the server
+      res.on('finish', () => {
+        cleanup();
+        // Use closeAllConnections if available (Node 18+)
+        if (typeof (server as any).closeAllConnections === 'function') {
+          (server as any).closeAllConnections();
+        }
+        server.close();
+        resolve({ organizationId, apiKey, firstName });
+      });
     });
 
     server.listen(port, async () => {
