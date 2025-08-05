@@ -249,42 +249,38 @@ export async function initializeAgent(
     await cloneRepoAndCopy(ASSETS_REPO, currentDirectory);
 
     const envPath = path.join(currentDirectory, '.env');
-    const envExists = await fileExists(envPath);
-    const envVars = [
-      `XPANDER_API_KEY="${client.apiKey}"`,
-      `XPANDER_ORGANIZATION_ID="${client.orgId!}"`,
-      `XPANDER_AGENT_ID="${agentId}"`,
-    ];
+    const envExamplePath = path.join(currentDirectory, '.env.example');
 
-    if (envExists) {
-      const { merge } = await inquirer.prompt([
-        {
-          type: 'confirm',
-          name: 'merge',
-          message:
-            '.env already exists. Do you want to merge in XPANDER credentials?',
-          default: true,
-        },
-      ]);
+    const envVars: any = {
+      XPANDER_API_KEY: `"${client.apiKey}"`,
+      XPANDER_ORGANIZATION_ID: `"${client.orgId!}"`,
+      XPANDER_AGENT_ID: `"${agentId}"`,
+    };
 
-      if (merge) {
-        const existingContent = await fs.readFile(envPath, 'utf-8');
-        const lines = existingContent.split('\n').filter(Boolean);
-        const keys = [
-          'XPANDER_API_KEY',
-          'XPANDER_ORGANIZATION_ID',
-          'XPANDER_AGENT_ID',
-        ];
+    const exampleEnv = (await fileExists(envExamplePath))
+      ? (await fs.readFile(envExamplePath, 'utf-8')).split('\n')
+      : [];
 
-        const updatedLines = lines.filter(
-          (line) => !keys.some((key) => line.startsWith(key + '=')),
-        );
-        updatedLines.push(...envVars);
-        await fs.writeFile(envPath, updatedLines.join('\n'));
+    const keysToInsert = Object.keys(envVars);
+
+    const mergedLines: string[] = exampleEnv.map((line) => {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('#')) return line;
+
+      const [key] = line.split('=', 1);
+      if (keysToInsert.includes(key.trim())) {
+        return `${key}=${envVars[key.trim()]}`;
       }
-    } else {
-      await fs.writeFile(envPath, envVars.join('\n'));
+      return line;
+    });
+
+    for (const key of keysToInsert) {
+      if (!mergedLines.some((line) => line.trim().startsWith(`${key}=`))) {
+        mergedLines.push(`${key}=${envVars[key]}`);
+      }
     }
+
+    await fs.writeFile(envPath, mergedLines.join('\n'));
 
     initializationSpinner.succeed(`Agent initialized successfully`);
   } catch (error: any) {
