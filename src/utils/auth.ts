@@ -11,35 +11,42 @@ export const waitForAuthCallback = async (): Promise<AuthResult> => {
 
   return new Promise((resolve, reject) => {
     const app = express();
-    const port = 59123; // Fixed port due to web app bug - it ignores the port parameter
+    const port = 59123;
     const server = http.createServer(app);
 
+    let resolved = false;
+
     const timeout = setTimeout(() => {
-      server.close();
-      reject(new Error('Authentication timeout - please try again'));
-    }, 300000); // 5 minute timeout
+      if (!resolved) {
+        resolved = true;
+        server.close();
+        reject(new Error('Authentication timeout - please try again'));
+      }
+    }, 300000); // 5 minutes
 
     const cleanup = () => {
       clearTimeout(timeout);
+      if (typeof (server as any).closeAllConnections === 'function') {
+        (server as any).closeAllConnections();
+      }
+      server.close();
     };
 
     app.get('/auth-callback', (req: Request, res: Response) => {
+      if (resolved) {
+        res.status(403).send('Authentication flow already completed');
+        return;
+      }
+
       const apiKey = req.query.token as string | undefined;
       const organizationId = req.query.organization_id as string | undefined;
       const firstName = req.query.first_name as string | undefined;
 
-      if (!apiKey) {
-        res.status(400).send('Missing token');
+      if (!apiKey || !organizationId) {
+        res.status(400).send('Missing required parameters');
         cleanup();
-        server.close();
-        reject(new Error('Missing token in callback'));
-        return;
-      }
-      if (!organizationId) {
-        res.status(400).send('Missing organization id');
-        cleanup();
-        server.close();
-        reject(new Error('Missing organization id in callback'));
+        resolved = true;
+        reject(new Error('Missing required parameters in callback'));
         return;
       }
 
@@ -47,15 +54,12 @@ export const waitForAuthCallback = async (): Promise<AuthResult> => {
 
       res.redirect(`${appUrl}/auth-completed`);
 
-      // Wait for the response to be sent before cleanup/closing the server
       res.on('finish', () => {
-        cleanup();
-        // Use closeAllConnections if available (Node 18+)
-        if (typeof (server as any).closeAllConnections === 'function') {
-          (server as any).closeAllConnections();
+        if (!resolved) {
+          resolved = true;
+          cleanup();
+          resolve({ apiKey, organizationId, firstName });
         }
-        server.close();
-        resolve({ organizationId, apiKey, firstName });
       });
     });
 
@@ -69,9 +73,11 @@ export const waitForAuthCallback = async (): Promise<AuthResult> => {
     });
 
     server.on('error', (err) => {
-      console.error('Server error:', err);
-      cleanup();
-      reject(new Error(`Failed to start auth server: ${err.message}`));
+      if (!resolved) {
+        resolved = true;
+        cleanup();
+        reject(new Error(`Failed to start auth server: ${err.message}`));
+      }
     });
   });
 };

@@ -1,12 +1,11 @@
-import fs from 'fs/promises';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import inquirer from 'inquirer';
 import ora from 'ora';
-import { XPanderConfig } from '../types';
 import { XpanderClient, createClient } from '../utils/client';
 import { ensureAgentIsInitialized, pathIsEmpty } from '../utils/custom-agents';
 import { restartDeployment } from '../utils/custom_agents_utils/deploymentManagement';
+import { getXpanderConfigFromEnvFile } from '../utils/custom_agents_utils/generic';
 
 async function restartAgent(client: XpanderClient) {
   console.log('\n');
@@ -46,9 +45,7 @@ async function restartAgent(client: XpanderClient) {
       return;
     }
 
-    const config: XPanderConfig = JSON.parse(
-      (await fs.readFile(`${currentDirectory}/xpander_config.json`)).toString(),
-    );
+    const config = await getXpanderConfigFromEnvFile(currentDirectory);
 
     const agent = await client.getAgent(config.agent_id);
     if (!agent) {

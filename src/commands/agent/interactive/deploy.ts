@@ -1,9 +1,7 @@
-import fs from 'fs/promises';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import inquirer from 'inquirer';
 import ora from 'ora';
-import { XPanderConfig } from '../../../types';
 import { XpanderClient } from '../../../utils/client';
 import {
   ensureAgentIsInitialized,
@@ -11,6 +9,7 @@ import {
 } from '../../../utils/custom-agents';
 import { uploadAndDeploy } from '../../../utils/custom_agents_utils/deploymentManagement';
 import { buildAndSaveDockerImage } from '../../../utils/custom_agents_utils/docker';
+import { getXpanderConfigFromEnvFile } from '../../../utils/custom_agents_utils/generic';
 import { configureLogsCommand } from '../../logs';
 
 export async function deployAgent(
@@ -55,9 +54,7 @@ export async function deployAgent(
       return;
     }
 
-    const config: XPanderConfig = JSON.parse(
-      (await fs.readFile(`${currentDirectory}/xpander_config.json`)).toString(),
-    );
+    const config = await getXpanderConfigFromEnvFile(currentDirectory);
 
     const agent = await client.getAgent(config.agent_id);
     if (!agent) {

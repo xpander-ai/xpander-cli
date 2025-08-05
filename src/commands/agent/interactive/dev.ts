@@ -1,11 +1,10 @@
 import { spawn } from 'child_process';
 import { existsSync } from 'fs';
-import fs from 'fs/promises';
 import { join } from 'path';
 import chalk from 'chalk';
 import ora from 'ora';
-import { XPanderConfig } from '../../../types';
 import { ensureAgentIsInitialized } from '../../../utils/custom-agents';
+import { getXpanderConfigFromEnvFile } from '../../../utils/custom_agents_utils/generic';
 
 async function findPythonExecutable(): Promise<string> {
   const venv = process.env.VIRTUAL_ENV;
@@ -48,9 +47,8 @@ export async function startAgent() {
   );
   if (!isInitialized) return;
 
-  const config: XPanderConfig = JSON.parse(
-    (await fs.readFile(`${currentDirectory}/xpander_config.json`)).toString(),
-  );
+  const config = await getXpanderConfigFromEnvFile(currentDirectory);
+
   devModeSpinner.text = `Starting agent ${config.agent_id}`;
 
   try {
