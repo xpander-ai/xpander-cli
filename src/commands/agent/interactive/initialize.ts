@@ -7,7 +7,7 @@ import { promisify } from 'util';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import ora from 'ora';
-import { XPanderConfig } from '../../../types';
+import { AGENT_TEMPLATES } from '../../../types';
 import { XpanderClient } from '../../../utils/client';
 import { fileExists, pathIsEmpty } from '../../../utils/custom-agents';
 
@@ -26,38 +26,20 @@ const cloneRepoAndCopy = async (
   const tmpFolder = path.join(os.tmpdir(), `repo_tmp_${Date.now()}`);
   let askedXpanderHandlerOverwrite = false;
   let overwriteXpanderHandler = false;
-  let askedAgentInstructionsOverwrite = false;
-  let overwriteAgentInstructions = false;
   let askedDockerfileOverwrite = false;
   let overwriteDockerfile = false;
   let askedDockerignoreOverwrite = false;
   let overwriteDockerignore = false;
 
   try {
-    // Clone the repository shallowly (latest commit only)
     await execAsync(`git clone --depth 1 ${repoUrl} ${tmpFolder}`);
-
-    // Ensure destination path exists
     await fs.mkdir(destPath, { recursive: true });
-
     const files = await fs.readdir(tmpFolder);
 
     for (const file of files) {
-      // Skip files and folders that shouldn't be copied
-      const baseExclusions = [
-        'README.md',
-        'LICENSE',
-        '.git',
-        'xpander_config.json',
-        'templates',
-      ];
-
-      // Also exclude all template folders
+      const baseExclusions = ['README.md', 'LICENSE', '.git', 'templates'];
       const isTemplateFolder = file.endsWith('-template');
-
-      if (baseExclusions.includes(file) || isTemplateFolder) {
-        continue;
-      }
+      if (baseExclusions.includes(file) || isTemplateFolder) continue;
 
       const srcPath = path.join(tmpFolder, file);
       const destFilePath = path.join(destPath, file);
@@ -68,99 +50,59 @@ const cloneRepoAndCopy = async (
             {
               type: 'confirm',
               name: 'overwrite',
-              message:
-                "'xpander_handler.py' already exists. Do you want to overwrite it?",
+              message: "'xpander_handler.py' already exists. Overwrite?",
               default: false,
             },
           ]);
           askedXpanderHandlerOverwrite = true;
           overwriteXpanderHandler = overwrite;
         }
-        if (!overwriteXpanderHandler) {
-          continue;
-        }
+        if (!overwriteXpanderHandler) continue;
       }
-      if (
-        file === 'agent_instructions.json' &&
-        (await fileExists(destFilePath))
-      ) {
-        if (!askedAgentInstructionsOverwrite) {
-          const { overwrite } = await inquirer.prompt([
-            {
-              type: 'confirm',
-              name: 'overwrite',
-              message:
-                "'agent_instructions.json' already exists. Do you want to overwrite it?",
-              default: false,
-            },
-          ]);
-          askedAgentInstructionsOverwrite = true;
-          overwriteAgentInstructions = overwrite;
-        }
-        if (!overwriteAgentInstructions) {
-          continue;
-        }
-      }
+
       if (file === 'Dockerfile' && (await fileExists(destFilePath))) {
         if (!askedDockerfileOverwrite) {
           const { overwrite } = await inquirer.prompt([
             {
               type: 'confirm',
               name: 'overwrite',
-              message:
-                "'Dockerfile' already exists. Do you want to overwrite it?",
+              message: "'Dockerfile' already exists. Overwrite?",
               default: false,
             },
           ]);
           askedDockerfileOverwrite = true;
           overwriteDockerfile = overwrite;
         }
-        if (!overwriteDockerfile) {
-          continue;
-        }
+        if (!overwriteDockerfile) continue;
       }
+
       if (file === '.dockerignore' && (await fileExists(destFilePath))) {
         if (!askedDockerignoreOverwrite) {
           const { overwrite } = await inquirer.prompt([
             {
               type: 'confirm',
               name: 'overwrite',
-              message:
-                "'.dockerignore' already exists. Do you want to overwrite it?",
+              message: "'.dockerignore' already exists. Overwrite?",
               default: false,
             },
           ]);
           askedDockerignoreOverwrite = true;
           overwriteDockerignore = overwrite;
         }
-        if (!overwriteDockerignore) {
-          continue;
-        }
+        if (!overwriteDockerignore) continue;
       }
-      if (file === 'requirements.txt' && (await fileExists(destFilePath))) {
-        // merge requirements
-        const existingRequirements = (await fs.readFile(destFilePath))
-          .toString()
-          .split('\n');
-        const newRequirements = (await fs.readFile(srcPath))
-          .toString()
-          .split('\n');
-        const requirementsToAdd = [];
-        for (const req of newRequirements) {
-          if (!existingRequirements.includes(req)) {
-            requirementsToAdd.push(req);
-          }
-        }
 
-        if (requirementsToAdd.length !== 0) {
-          existingRequirements.push(...requirementsToAdd);
-          await fs.writeFile(destFilePath, existingRequirements.join('\n'));
-        }
+      if (file === 'requirements.txt' && (await fileExists(destFilePath))) {
+        const existing = (await fs.readFile(destFilePath))
+          .toString()
+          .split('\n');
+        const incoming = (await fs.readFile(srcPath)).toString().split('\n');
+        const merged = [...new Set([...existing, ...incoming])].filter(Boolean);
+        await fs.writeFile(destFilePath, merged.join('\n'));
         continue;
       }
 
       const stat = await fs.lstat(srcPath);
-
       if (stat.isDirectory()) {
         await fs.cp(srcPath, destFilePath, { recursive: true });
       } else {
@@ -172,16 +114,12 @@ const cloneRepoAndCopy = async (
     console.error('❌ Error during clone and copy:', error);
     throw error;
   } finally {
-    // Cleanup temporary folder
     if (fssync.existsSync(tmpFolder)) {
       fssync.rmSync(tmpFolder, { recursive: true, force: true });
     }
   }
 };
 
-/**
- * Initialize agent with interactive prompts
- */
 export async function initializeAgent(
   client: XpanderClient,
   agentToInitialize?: string,
@@ -192,7 +130,6 @@ export async function initializeAgent(
 
   let agentId = agentToInitialize;
   if (!agentId) {
-    // Fetch available agents for selection
     const fetchSpinner = ora('Fetching your agents...').start();
     const agentsList = await client.getAgents();
     fetchSpinner.succeed('Agents loaded successfully');
@@ -205,14 +142,10 @@ export async function initializeAgent(
       return;
     }
 
-    // Sort agents by creation date (newest first)
-    const agents = [...agentsList].sort((a, b) => {
-      return (
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
-    });
-
-    // Create choices for the prompt
+    const agents = [...agentsList].sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    );
     const agentChoices = agents.map((agent) => ({
       name: `${agent.name} (${agent.id})`,
       value: agent.id,
@@ -228,26 +161,30 @@ export async function initializeAgent(
     ]));
   }
   agentId = agentId!;
-
-  // Ask for template selection
-  const { useTemplate } = await inquirer.prompt([
-    {
-      type: 'confirm',
-      name: 'useTemplate',
-      message: 'Do you want to use a template for initialization?',
-      default: false,
-    },
-  ]);
+  const useTemplate = true;
+  // disabled templates selection, agno only
+  // const { useTemplate } = await inquirer.prompt([
+  //   {
+  //     type: 'confirm',
+  //     name: 'useTemplate',
+  //     message: 'Do you want to use a template for initialization?',
+  //     default: false,
+  //   },
+  // ]);
 
   if (useTemplate) {
-    // Use template-based initialization
-    const { selectTemplate } = await import('../../../utils/template-selector');
+    // disabled templates selection, agno only
+    // const { selectTemplate } = await import('../../../utils/template-selector');
     const { initializeAgentWithTemplate } = await import(
       '../../../utils/template-cloner'
     );
 
     try {
-      const selectedTemplate = await selectTemplate();
+      // disabled templates selection, agno only
+      // const selectedTemplate = await selectTemplate();
+      const selectedTemplate = AGENT_TEMPLATES.find(
+        (tmp) => tmp.id === 'agno',
+      )!;
       const { displayTemplateInfo } = await import(
         '../../../utils/template-selector'
       );
@@ -260,11 +197,9 @@ export async function initializeAgent(
     }
   }
 
-  // Continue with standard initialization
   const initializationSpinner = ora(`Retrieving agent "${agentId}"...`).start();
   try {
     const agent = await client.getAgent(agentId);
-
     if (!agent) {
       initializationSpinner.fail(`Agent with ID ${agentId} failed to retrieve`);
       return;
@@ -272,7 +207,6 @@ export async function initializeAgent(
 
     initializationSpinner.info(`Agent ${agent?.name} retrieved successfully`);
 
-    // Check if current folder is empty
     let currentDirectory = process.cwd();
     if (!(await pathIsEmpty(currentDirectory))) {
       const { action } = await inquirer.prompt([
@@ -290,10 +224,7 @@ export async function initializeAgent(
               name: `Create a new subfolder "${agent?.name || 'agent'}"`,
               value: 'subfolder',
             },
-            {
-              name: 'Cancel initialization',
-              value: 'cancel',
-            },
+            { name: 'Cancel initialization', value: 'cancel' },
           ],
           default: 'subfolder',
         },
@@ -307,8 +238,6 @@ export async function initializeAgent(
       if (action === 'subfolder') {
         const folderName = agent?.name || 'agent';
         const newDirectory = path.join(currentDirectory, folderName);
-
-        // Create the subfolder
         await fs.mkdir(newDirectory, { recursive: true });
         currentDirectory = newDirectory;
         console.log(chalk.green(`✓ Created subfolder: ${folderName}`));
@@ -317,55 +246,44 @@ export async function initializeAgent(
 
     initializationSpinner.text = `Initializing ${agent?.name}`;
 
-    // Clone assets into current directory
     await cloneRepoAndCopy(ASSETS_REPO, currentDirectory);
 
-    const config: XPanderConfig = {
-      organization_id: client.orgId!,
-      api_key: client.apiKey,
-      agent_id: agentId,
-    };
+    const envPath = path.join(currentDirectory, '.env');
+    const envExists = await fileExists(envPath);
+    const envVars = [
+      `XPANDER_API_KEY="${client.apiKey}"`,
+      `XPANDER_ORGANIZATION_ID="${client.orgId!}"`,
+      `XPANDER_AGENT_ID="${agentId}"`,
+    ];
 
-    initializationSpinner.text = `Creating configuration files`;
-
-    // Create xpander_config.json - prompt if it already exists
-    const xpanderConfigPath = path.join(
-      currentDirectory,
-      'xpander_config.json',
-    );
-
-    let shouldWriteXpanderConfig = true;
-    if (await fileExists(xpanderConfigPath)) {
-      const { overwrite } = await inquirer.prompt([
+    if (envExists) {
+      const { merge } = await inquirer.prompt([
         {
           type: 'confirm',
-          name: 'overwrite',
+          name: 'merge',
           message:
-            "'xpander_config.json' already exists. Do you want to overwrite it?",
-          default: false,
+            '.env already exists. Do you want to merge in XPANDER credentials?',
+          default: true,
         },
       ]);
-      shouldWriteXpanderConfig = overwrite;
-    }
 
-    if (shouldWriteXpanderConfig) {
-      await fs.writeFile(xpanderConfigPath, JSON.stringify(config, null, 2));
-    }
+      if (merge) {
+        const existingContent = await fs.readFile(envPath, 'utf-8');
+        const lines = existingContent.split('\n').filter(Boolean);
+        const keys = [
+          'XPANDER_API_KEY',
+          'XPANDER_ORGANIZATION_ID',
+          'XPANDER_AGENT_ID',
+        ];
 
-    // Set agent instructions only if file doesn't exist (handled in cloneRepoAndCopy for existing files)
-    const agentInstructionsPath = path.join(
-      currentDirectory,
-      'agent_instructions.json',
-    );
-    if (!(await fileExists(agentInstructionsPath))) {
-      try {
-        await fs.writeFile(
-          agentInstructionsPath,
-          JSON.stringify(agent.instructions, null, 2),
+        const updatedLines = lines.filter(
+          (line) => !keys.some((key) => line.startsWith(key + '=')),
         );
-      } catch (err) {
-        // ignore
+        updatedLines.push(...envVars);
+        await fs.writeFile(envPath, updatedLines.join('\n'));
       }
+    } else {
+      await fs.writeFile(envPath, envVars.join('\n'));
     }
 
     initializationSpinner.succeed(`Agent initialized successfully`);

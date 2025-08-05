@@ -1,12 +1,9 @@
-import fs from 'fs/promises';
 import chalk from 'chalk';
 import ora from 'ora';
-import { XPanderConfig } from '../../../types';
 import { XpanderClient } from '../../../utils/client';
-import { fileExists, pathIsEmpty } from '../../../utils/custom-agents';
+import { pathIsEmpty } from '../../../utils/custom-agents';
+import { getXpanderConfigFromEnvFile } from '../../../utils/custom_agents_utils/generic';
 import { streamLogs } from '../../../utils/custom_agents_utils/logs';
-
-const requiredFiles = ['xpander_config.json'];
 
 export async function getAgentLogs(client: XpanderClient) {
   console.log('\n');
@@ -24,26 +21,7 @@ export async function getAgentLogs(client: XpanderClient) {
       return;
     }
 
-    const missingFiles = await Promise.all(
-      requiredFiles.map(async (file) =>
-        !(await fileExists(`${currentDirectory}/${file}`)) ? file : null,
-      ),
-    ).then((results) =>
-      results.filter((file): file is string => file !== null),
-    );
-
-    if (missingFiles.length !== 0) {
-      logsSpinner.fail(
-        `Missing required files: ${missingFiles.join(', ')}. Re-initialize your agent.`,
-      );
-      return;
-    }
-
-    const configContent = await fs.readFile(
-      `${currentDirectory}/xpander_config.json`,
-      'utf-8',
-    );
-    const config: XPanderConfig = JSON.parse(configContent);
+    const config = await getXpanderConfigFromEnvFile(currentDirectory);
 
     const agent = await client.getAgent(config.agent_id);
     if (!agent) {
