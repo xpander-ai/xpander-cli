@@ -8,6 +8,7 @@ export interface Agent {
   organization_id: string;
   created_at: string;
   updated_at: string;
+  is_coordinate_mode: boolean;
   status: string;
   active?: boolean; // Whether the agent is active
   version?: number;
