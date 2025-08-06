@@ -93,6 +93,17 @@ export const AGENT_TEMPLATES: AgentTemplate[] = [
     icon: '🧠',
   },
   {
+    id: 'agno-team',
+    name: 'Agno Team',
+    description:
+      'Agno AI Agents Team framework template for building sophisticated AI agents teams',
+    category: TemplateCategory.AI_FRAMEWORK,
+    folderName: 'agno-template-team',
+    repositoryUrl: 'git@github.com:xpander-ai/custom-agents-assets.git',
+    visible: true, // Ready for production!
+    icon: '🧠',
+  },
+  {
     id: 'autogen',
     name: 'AutoGen',
     description:

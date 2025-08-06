@@ -9,7 +9,7 @@ import inquirer from 'inquirer';
 import ora from 'ora';
 import { XpanderClient } from './client';
 import { fileExists, pathIsEmpty } from './custom-agents';
-import { AgentTemplate } from '../types/templates';
+import { AGENT_TEMPLATES, AgentTemplate } from '../types/templates';
 
 const execAsync = promisify(exec);
 
@@ -190,6 +190,11 @@ export async function initializeAgentWithTemplate(
     if (!agent) {
       initializationSpinner.fail(`Agent with ID ${agentId} failed to retrieve`);
       return;
+    }
+
+    // override to team template
+    if (agent.is_coordinate_mode) {
+      template = AGENT_TEMPLATES.find((tpl) => tpl.id == 'agno-team')!;
     }
 
     initializationSpinner.info(`Agent ${agent?.name} retrieved successfully`);
