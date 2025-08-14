@@ -12,17 +12,27 @@ async function restartAgent(client: XpanderClient) {
   console.log(chalk.bold.blue('🔄 Agent restart'));
   console.log(chalk.dim('─'.repeat(60)));
 
-  const { shouldRestart } = await inquirer.prompt([
-    {
-      type: 'confirm',
-      name: 'shouldRestart',
-      message: 'Are you sure you want to restart your AI Agent deployment?',
-      default: true,
-    },
-  ]);
+  const isNonInteractive = process.env.XPANDER_NON_INTERACTIVE === 'true';
 
-  if (!shouldRestart) {
-    return;
+  if (!isNonInteractive) {
+    const { shouldRestart } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'shouldRestart',
+        message: 'Are you sure you want to restart your AI Agent deployment?',
+        default: true,
+      },
+    ]);
+
+    if (!shouldRestart) {
+      return;
+    }
+  } else {
+    console.log(
+      chalk.yellow(
+        '→ Running in non-interactive mode, proceeding with restart',
+      ),
+    );
   }
 
   const restartSpinner = ora(`Initializing restart...`).start();
@@ -64,25 +74,35 @@ async function restartAgent(client: XpanderClient) {
       restartSpinner.succeed(`Agent ${agent.name} restarted successfully`);
     }
 
-    const { tailLogs } = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'tailLogs',
-        message: 'Tail logs from the restarted AI Agent?',
-        default: true,
-      },
-    ]);
+    if (!isNonInteractive) {
+      const { tailLogs } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'tailLogs',
+          message: 'Tail logs from the restarted AI Agent?',
+          default: true,
+        },
+      ]);
 
-    if (tailLogs) {
-      // Import and execute logs command
-      const { configureLogsCommand } = await import('./logs');
-      const tempProgram = new Command();
-      configureLogsCommand(tempProgram);
+      if (tailLogs) {
+        // Import and execute logs command
+        const { configureLogsCommand } = await import('./logs');
+        const tempProgram = new Command();
+        configureLogsCommand(tempProgram);
 
-      const logsCmd = tempProgram.commands.find((cmd) => cmd.name() === 'logs');
-      if (logsCmd) {
-        await logsCmd.parseAsync([]);
+        const logsCmd = tempProgram.commands.find(
+          (cmd) => cmd.name() === 'logs',
+        );
+        if (logsCmd) {
+          await logsCmd.parseAsync([]);
+        }
       }
+    } else {
+      console.log(
+        chalk.yellow(
+          '→ Non-interactive mode: skipping log tail. Use "xpander logs" to view logs manually.',
+        ),
+      );
     }
   } catch (error: any) {
     restartSpinner.fail('Failed to restart agent');

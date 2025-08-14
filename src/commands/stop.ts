@@ -12,17 +12,25 @@ async function stopAgent(client: XpanderClient) {
   console.log(chalk.bold.blue('🛑 Agent stop'));
   console.log(chalk.dim('─'.repeat(60)));
 
-  const { shouldStop } = await inquirer.prompt([
-    {
-      type: 'confirm',
-      name: 'shouldStop',
-      message: 'Are you sure you want to stop your AI Agent deployment?',
-      default: true,
-    },
-  ]);
+  const isNonInteractive = process.env.XPANDER_NON_INTERACTIVE === 'true';
 
-  if (!shouldStop) {
-    return;
+  if (!isNonInteractive) {
+    const { shouldStop } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'shouldStop',
+        message: 'Are you sure you want to stop your AI Agent deployment?',
+        default: true,
+      },
+    ]);
+
+    if (!shouldStop) {
+      return;
+    }
+  } else {
+    console.log(
+      chalk.yellow('→ Running in non-interactive mode, proceeding with stop'),
+    );
   }
 
   const stopSpinner = ora(`Initializing stop...`).start();

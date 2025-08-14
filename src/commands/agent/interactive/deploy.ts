@@ -20,7 +20,9 @@ export async function deployAgent(
   console.log(chalk.bold.blue('✨ Agent deployment'));
   console.log(chalk.dim('─'.repeat(60)));
 
-  if (!skipDeploymentConfirmation) {
+  const isNonInteractive = process.env.XPANDER_NON_INTERACTIVE === 'true';
+
+  if (!skipDeploymentConfirmation && !isNonInteractive) {
     const { shouldDeploy } = await inquirer.prompt([
       {
         type: 'confirm',
@@ -32,6 +34,12 @@ export async function deployAgent(
     if (!shouldDeploy) {
       return;
     }
+  } else if (!skipDeploymentConfirmation && isNonInteractive) {
+    console.log(
+      chalk.yellow(
+        '→ Running in non-interactive mode, proceeding with deployment',
+      ),
+    );
   }
 
   const deploymentSpinner = ora(`Initializing deployment...`).start();
@@ -90,25 +98,35 @@ export async function deployAgent(
       deploymentSpinner.succeed(`Agent ${agent.name} deployed successfully`);
     }
 
-    const { tailLogs } = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'tailLogs',
-        message: 'Tail logs from the running AI Agent?',
-        default: true,
-      },
-    ]);
-    if (tailLogs) {
-      // Create a temporary program just to run the logs command
-      const tempProgram = new Command();
-      configureLogsCommand(tempProgram);
+    if (!isNonInteractive) {
+      const { tailLogs } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'tailLogs',
+          message: 'Tail logs from the running AI Agent?',
+          default: true,
+        },
+      ]);
+      if (tailLogs) {
+        // Create a temporary program just to run the logs command
+        const tempProgram = new Command();
+        configureLogsCommand(tempProgram);
 
-      // Find the logs command and execute it without passing any arguments
-      const logsCmd = tempProgram.commands.find((cmd) => cmd.name() === 'logs');
-      if (logsCmd) {
-        await logsCmd.parseAsync([]);
+        // Find the logs command and execute it without passing any arguments
+        const logsCmd = tempProgram.commands.find(
+          (cmd) => cmd.name() === 'logs',
+        );
+        if (logsCmd) {
+          await logsCmd.parseAsync([]);
+        }
+        return;
       }
-      return;
+    } else {
+      console.log(
+        chalk.yellow(
+          '→ Non-interactive mode: skipping log tail. Use "xpander logs" to view logs manually.',
+        ),
+      );
     }
   } catch (error: any) {
     deploymentSpinner.fail('Failed to deploy agent');

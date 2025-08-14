@@ -34,6 +34,38 @@ export * from './types';
 
 // Read the version from package.json instead of hardcoding it
 
+/**
+ * Check if running in non-interactive mode (CI environment or flags)
+ */
+function isNonInteractive(): boolean {
+  // Check for CI environment variables
+  const ciEnvVars = [
+    'CI',
+    'CONTINUOUS_INTEGRATION',
+    'BUILD_NUMBER',
+    'JENKINS_URL',
+    'GITHUB_ACTIONS',
+    'GITLAB_CI',
+    'CIRCLECI',
+    'TRAVIS',
+    'BUILDKITE',
+  ];
+
+  if (ciEnvVars.some((envVar) => process.env[envVar])) {
+    return true;
+  }
+
+  // Check for explicit non-interactive flags
+  if (
+    process.env.XPANDER_NON_INTERACTIVE === 'true' ||
+    process.env.XPANDER_YES === 'true'
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 async function isLoggedIn(): Promise<boolean> {
   // Check for CLI-provided API key first
   if (process.env.XPANDER_CLI_API_KEY) {
@@ -170,6 +202,11 @@ async function main(): Promise<void> {
     .option('--output <format>', 'Output format (json, table)', 'table')
     .option('--profile <n>', 'Profile to use (default: current profile)')
     .option('--api-key <key>', 'API key to use for authentication')
+    .option(
+      '-y, --yes',
+      'Automatically answer yes to all prompts (non-interactive mode)',
+    )
+    .option('--no-interactive', 'Run in non-interactive mode')
     .addHelpCommand();
 
   // Register commands
@@ -263,6 +300,16 @@ async function main(): Promise<void> {
       // Set the API key if specified via command line
       if (globalOptions.apiKey) {
         process.env.XPANDER_CLI_API_KEY = globalOptions.apiKey;
+      }
+
+      // Set non-interactive mode if specified or detected
+      if (
+        globalOptions.yes ||
+        globalOptions.noInteractive ||
+        isNonInteractive()
+      ) {
+        process.env.XPANDER_NON_INTERACTIVE = 'true';
+        process.env.XPANDER_YES = 'true';
       }
 
       // Set the output format if specified
