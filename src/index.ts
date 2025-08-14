@@ -35,8 +35,19 @@ export * from './types';
 // Read the version from package.json instead of hardcoding it
 
 async function isLoggedIn(): Promise<boolean> {
+  // Check for CLI-provided API key first
+  if (process.env.XPANDER_CLI_API_KEY) {
+    return true;
+  }
+
+  // Check for OS environment variables
+  if (process.env.xpander_api_key || process.env.XPANDER_API_KEY) {
+    return true;
+  }
+
+  // Check profile configuration
   const apiKey = getApiKey();
-  return !!apiKey; // Simple check if API key exists
+  return !!apiKey;
 }
 
 async function promptLogin() {
@@ -158,6 +169,7 @@ async function main(): Promise<void> {
     .description('Xpander.ai CLI for managing AI agents')
     .option('--output <format>', 'Output format (json, table)', 'table')
     .option('--profile <n>', 'Profile to use (default: current profile)')
+    .option('--api-key <key>', 'API key to use for authentication')
     .addHelpCommand();
 
   // Register commands
@@ -201,12 +213,11 @@ async function main(): Promise<void> {
   if (isInterfacesCommand || isOperationsCommand) {
     try {
       await program.parseAsync(process.argv);
-      process.exit(0);
+      return;
     } catch (err: any) {
       console.error(chalk.red('Error: ') + (err.message || String(err)));
       process.exit(1);
     }
-    return;
   }
 
   try {
@@ -247,6 +258,11 @@ async function main(): Promise<void> {
           process.exitCode = 1;
           process.exit(1); // Exit immediately to prevent further execution
         }
+      }
+
+      // Set the API key if specified via command line
+      if (globalOptions.apiKey) {
+        process.env.XPANDER_CLI_API_KEY = globalOptions.apiKey;
       }
 
       // Set the output format if specified

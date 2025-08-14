@@ -177,14 +177,38 @@ export function setCurrentProfile(profile: string): void {
 
 /**
  * Get the API key for a profile
+ * Priority: CLI flag > Profile configuration > OS environment variables
  */
 export function getApiKey(profile?: string): string {
+  // Check CLI-provided API key first (highest priority)
+  if (process.env.XPANDER_CLI_API_KEY) {
+    return process.env.XPANDER_CLI_API_KEY;
+  }
+
   const profileName = profile || getCurrentProfile();
   ensureConfigDirExists();
 
+  // If a specific profile is requested, use profile configuration first
+  if (profile) {
+    const creds = parseCredsFile(CREDS_FILE);
+    if (creds[profileName] && creds[profileName].xpander_api_key) {
+      return creds[profileName].xpander_api_key;
+    }
+    return '';
+  }
+
+  // For default profile, check profile config first, then OS environment variables
   const creds = parseCredsFile(CREDS_FILE);
   if (creds[profileName] && creds[profileName].xpander_api_key) {
     return creds[profileName].xpander_api_key;
+  }
+
+  // Fall back to OS environment variables only if no profile config exists
+  if (process.env.xpander_api_key) {
+    return process.env.xpander_api_key;
+  }
+  if (process.env.XPANDER_API_KEY) {
+    return process.env.XPANDER_API_KEY;
   }
 
   return '';
@@ -208,14 +232,33 @@ export function setApiKey(apiKey: string, profile?: string): void {
 
 /**
  * Get the organization ID for a profile
+ * Profile configuration takes precedence, falls back to OS environment variables
  */
 export function getOrganizationId(profile?: string): string {
   const profileName = profile || getCurrentProfile();
   ensureConfigDirExists();
 
+  // If a specific profile is requested, use profile configuration first
+  if (profile) {
+    const creds = parseCredsFile(CREDS_FILE);
+    if (creds[profileName] && creds[profileName].xpander_organization_id) {
+      return creds[profileName].xpander_organization_id;
+    }
+    return '';
+  }
+
+  // For default profile, check profile config first, then OS environment variables
   const creds = parseCredsFile(CREDS_FILE);
   if (creds[profileName] && creds[profileName].xpander_organization_id) {
     return creds[profileName].xpander_organization_id;
+  }
+
+  // Fall back to OS environment variables only if no profile config exists
+  if (process.env.xpander_organization_id) {
+    return process.env.xpander_organization_id;
+  }
+  if (process.env.XPANDER_ORGANIZATION_ID) {
+    return process.env.XPANDER_ORGANIZATION_ID;
   }
 
   return '';
