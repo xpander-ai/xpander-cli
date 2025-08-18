@@ -2,76 +2,66 @@ import chalk from 'chalk';
 import { Command } from 'commander';
 import inquirer from 'inquirer';
 import ora from 'ora';
+import { getAgentIdFromEnvOrSelection } from '../utils/agent-resolver';
 import { XpanderClient, createClient } from '../utils/client';
-import { ensureAgentIsInitialized, pathIsEmpty } from '../utils/custom-agents';
 import { restartDeployment } from '../utils/custom_agents_utils/deploymentManagement';
-import { getXpanderConfigFromEnvFile } from '../utils/custom_agents_utils/generic';
 
-async function restartAgent(client: XpanderClient) {
+export async function restartAgent(
+  client: XpanderClient,
+  providedAgentId?: string,
+) {
   console.log('\n');
   console.log(chalk.bold.blue('🔄 Agent restart'));
   console.log(chalk.dim('─'.repeat(60)));
 
   const isNonInteractive = process.env.XPANDER_NON_INTERACTIVE === 'true';
 
-  if (!isNonInteractive) {
-    const { shouldRestart } = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'shouldRestart',
-        message: 'Are you sure you want to restart your AI Agent deployment?',
-        default: true,
-      },
-    ]);
-
-    if (!shouldRestart) {
-      return;
-    }
-  } else {
-    console.log(
-      chalk.yellow(
-        '→ Running in non-interactive mode, proceeding with restart',
-      ),
-    );
-  }
-
   const restartSpinner = ora(`Initializing restart...`).start();
   try {
-    // Check if current folder is empty
-    const currentDirectory = process.cwd();
-    if (await pathIsEmpty(currentDirectory)) {
-      restartSpinner.fail(
-        'Current workdir is not initialized, initialize your agent first.',
-      );
+    const agentId = await getAgentIdFromEnvOrSelection(client, providedAgentId);
+    if (!agentId) {
+      restartSpinner.fail('No agent selected.');
       return;
     }
 
-    // check for configuration and required files
-    const isInitialized = await ensureAgentIsInitialized(
-      currentDirectory,
-      restartSpinner,
-    );
-    if (!isInitialized) {
-      return;
-    }
-
-    const config = await getXpanderConfigFromEnvFile(currentDirectory);
-
-    const agent = await client.getAgent(config.agent_id);
+    const agent = await client.getAgent(agentId);
     if (!agent) {
-      restartSpinner.fail(`Agent ${config.agent_id} not found!`);
+      restartSpinner.fail(`Agent ${agentId} not found!`);
       return;
     }
 
-    restartSpinner.text = `Restarting agent ${agent.name}`;
+    restartSpinner.stop();
+
+    if (!isNonInteractive) {
+      const { shouldRestart } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'shouldRestart',
+          message: `Are you sure you want to restart ${agent.name}?`,
+          default: true,
+        },
+      ]);
+
+      if (!shouldRestart) {
+        return;
+      }
+    } else {
+      console.log(
+        chalk.yellow(
+          '→ Running in non-interactive mode, proceeding with restart',
+        ),
+      );
+    }
+
+    const newSpinner = ora(`Restarting agent ${agent.name}`).start();
 
     // restart deployment
-    const result = await restartDeployment(restartSpinner, client, agent.id);
+    const result = await restartDeployment(newSpinner, client, agent.id);
 
     if (!result) {
-      restartSpinner.fail(`Restart failed`);
+      newSpinner.fail(`Restart failed`);
     } else {
-      restartSpinner.succeed(`Agent ${agent.name} restarted successfully`);
+      newSpinner.succeed(`Agent ${agent.name} restarted successfully`);
     }
 
     if (!isNonInteractive) {
@@ -115,12 +105,12 @@ async function restartAgent(client: XpanderClient) {
  */
 export function configureRestartCommand(program: Command): Command {
   const restartCmd = program
-    .command('restart')
-    .description('Restart your AI Agent deployment')
+    .command('restart [agent]')
+    .description('Restart agent deployment')
     .option('--profile <n>', 'Profile to use')
-    .action(async (options) => {
+    .action(async (agentId, options) => {
       const client = createClient(options.profile);
-      await restartAgent(client);
+      await restartAgent(client, agentId);
     });
 
   return restartCmd;

@@ -7,11 +7,11 @@ import { startAgent } from './agent/interactive/dev';
  */
 export function configureDevCommand(program: Command): Command {
   const operationsCmd = program
-    .command(`${CommandType.Dev}`)
-    .description('Run your agent locally')
+    .command(`${CommandType.Dev} [agent]`)
+    .description('Run agent locally')
     .option('--profile <n>', 'Profile to use')
-    .action(async () => {
-      await startAgent();
+    .action(async (agentId, _options) => {
+      await startAgent(agentId);
     });
 
   return operationsCmd;

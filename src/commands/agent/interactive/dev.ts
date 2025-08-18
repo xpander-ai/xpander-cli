@@ -33,7 +33,7 @@ async function findPythonExecutable(): Promise<string> {
 /**
  * Start agent locally and keep process running
  */
-export async function startAgent() {
+export async function startAgent(providedAgentId?: string) {
   console.log('\n');
   console.log(chalk.bold.blue('✨ Starting agent in dev mode'));
   console.log(chalk.dim('─'.repeat(60)));
@@ -41,17 +41,29 @@ export async function startAgent() {
   const devModeSpinner = ora('Initializing local dev mode').start();
   const currentDirectory = process.cwd();
 
-  const isInitialized = await ensureAgentIsInitialized(
-    currentDirectory,
-    devModeSpinner,
-  );
-  if (!isInitialized) return;
-
-  const config = await getXpanderConfigFromEnvFile(currentDirectory);
-
-  devModeSpinner.text = `Starting agent ${config.agent_id}`;
+  // If agent ID provided, we assume user wants to run in that directory
+  // Otherwise ensure current directory is initialized
+  if (!providedAgentId) {
+    const isInitialized = await ensureAgentIsInitialized(
+      currentDirectory,
+      devModeSpinner,
+    );
+    if (!isInitialized) return;
+  }
 
   try {
+    const config = await getXpanderConfigFromEnvFile(currentDirectory);
+    const agentId = providedAgentId || config.agent_id;
+
+    if (!agentId) {
+      devModeSpinner.fail(
+        'No agent ID found. Please provide an agent ID or run in an initialized agent directory.',
+      );
+      return;
+    }
+
+    devModeSpinner.text = `Starting agent ${agentId}`;
+
     const python = await findPythonExecutable();
     devModeSpinner.stop();
 
