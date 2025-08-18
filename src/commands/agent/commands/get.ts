@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import { Command } from 'commander';
-import { CommandType } from '../../../types';
+import { resolveAgentId } from '../../../utils/agent-resolver';
 import { createClient } from '../../../utils/client';
 import { getApiKey } from '../../../utils/config';
 import { colorizeStatus } from '../helpers/format';
@@ -11,14 +11,20 @@ import { colorizeStatus } from '../helpers/format';
 export function registerGetCommand(agentCmd: Command): void {
   // Get details about a specific agent
   agentCmd
-    .command(CommandType.Get)
+    .command('get <agent>')
+    .alias('g')
     .description('Get details about an agent')
-    .requiredOption('--id <agent_id>', 'ID of the agent to get details for')
+    .option('--agent-id <agent_id>', 'Agent name or ID to get details for')
+    .option('--agent-name <agent_name>', 'Agent name or ID to get details for')
     .option('--json', 'Output in JSON format')
     .option('--profile <name>', 'Profile to use')
-    .action(async (options) => {
+    .action(async (agent, options) => {
+      // Use argument first, then flags
+      const agentNameOrId = agent || options.agentId || options.agentName;
+      const updatedOptions = { ...options, id: agentNameOrId };
+
       try {
-        const apiKey = getApiKey(options.profile);
+        const apiKey = getApiKey(updatedOptions.profile);
         if (!apiKey) {
           console.error(chalk.red('No API key found.'));
           console.error(
@@ -29,26 +35,33 @@ export function registerGetCommand(agentCmd: Command): void {
           return;
         }
 
-        const client = createClient(options.profile);
-        const agentDetails = await client.getAgent(options.id);
+        const client = createClient(updatedOptions.profile);
+
+        // Resolve agent name to ID if needed
+        const agentId = await resolveAgentId(client, updatedOptions.id);
+        if (!agentId) {
+          return;
+        }
+
+        const agentDetails = await client.getAgent(agentId);
 
         if (!agentDetails) {
           console.error(chalk.red(`Agent with ID "${options.id}" not found.`));
           return;
         }
 
-        if (options.json) {
+        if (updatedOptions.json) {
           console.log(JSON.stringify(agentDetails, null, 2));
           return;
         }
 
         console.log('');
         console.log('');
-        console.log(chalk.cyan('🤖 Agent Details'));
+        console.log(chalk.hex('#743CFF')('⦻ Agent Details'));
         console.log('──────────────────────────────────────────────────');
 
         // Display agent details in a readable format
-        console.log(`Name:     ${agentDetails.name}`);
+        console.log(`Name:     ${chalk.hex('#743CFF')(agentDetails.name)}`);
         console.log(`ID:       ${agentDetails.id}`);
         console.log(`Status:   ${colorizeStatus(agentDetails.status)}`);
         console.log(`Type:     ${agentDetails.type || 'regular'}`);
@@ -83,7 +96,9 @@ export function registerGetCommand(agentCmd: Command): void {
             chalk.yellow('Check your API key with "xpander profile --verify"'),
           );
         } else if (error.status === 404) {
-          console.error(chalk.red(`Agent with ID "${options.id}" not found.`));
+          console.error(
+            chalk.red(`Agent with ID "${updatedOptions.id}" not found.`),
+          );
         } else {
           console.error(
             chalk.red('Error fetching agent:'),

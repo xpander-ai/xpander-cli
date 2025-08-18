@@ -1,35 +1,34 @@
 import chalk from 'chalk';
 import ora from 'ora';
+import { getAgentIdFromEnvOrSelection } from '../../../utils/agent-resolver';
 import { XpanderClient } from '../../../utils/client';
-import { pathIsEmpty } from '../../../utils/custom-agents';
-import { getXpanderConfigFromEnvFile } from '../../../utils/custom_agents_utils/generic';
 import { streamLogs } from '../../../utils/custom_agents_utils/logs';
 
-export async function getAgentLogs(client: XpanderClient) {
+export async function getAgentLogs(
+  client: XpanderClient,
+  providedAgentId?: string,
+) {
   console.log('\n');
   console.log(chalk.bold.blue('✨ Agent Logs'));
   console.log(chalk.dim('─'.repeat(60)));
 
-  const logsSpinner = ora(`Initializing logs stream...`).start();
+  let logsSpinner: any;
   try {
-    const currentDirectory = process.cwd();
-
-    if (await pathIsEmpty(currentDirectory)) {
-      logsSpinner.fail(
-        'Current directory is empty. Please initialize and deploy your agent first.',
-      );
+    const agentId = await getAgentIdFromEnvOrSelection(client, providedAgentId);
+    if (!agentId) {
+      console.log(chalk.yellow('No agent selected.'));
       return;
     }
 
-    const config = await getXpanderConfigFromEnvFile(currentDirectory);
-
-    const agent = await client.getAgent(config.agent_id);
+    const agent = await client.getAgent(agentId);
     if (!agent) {
-      logsSpinner.fail(`Agent with ID ${config.agent_id} not found.`);
+      console.log(chalk.red(`Agent with ID ${agentId} not found.`));
       return;
     }
 
-    logsSpinner.text = `Starting log stream for ${agent.name}. Press Ctrl+C to stop.`;
+    logsSpinner = ora(
+      `Starting log stream for ${agent.name}. Press Ctrl+C to stop.`,
+    ).start();
 
     // Handle Ctrl+C gracefully
     process.on('SIGINT', () => {
@@ -40,7 +39,9 @@ export async function getAgentLogs(client: XpanderClient) {
 
     await streamLogs(logsSpinner, client, agent.id);
   } catch (error: any) {
-    logsSpinner.fail('Failed to retrieve agent logs.');
+    if (logsSpinner) {
+      logsSpinner.fail('Failed to retrieve agent logs.');
+    }
     console.error(chalk.red('Error:'), error?.message || String(error));
   }
 }

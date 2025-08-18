@@ -9,7 +9,7 @@ import { syncSecrets } from './agent/interactive/secrets-sync';
 export function configureSecretsSyncCommand(program: Command): Command {
   const operationsCmd = program
     .command(`${CommandType.SecretsSync}`)
-    .description('Sync your .env file to your deployed AI Agent')
+    .description('Sync .env to deployed agent')
     .option('--profile <n>', 'Profile to use')
     .action(async (options) => {
       const client = createClient(options.profile);

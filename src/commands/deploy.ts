@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import { CommandType } from '../types';
+import { getAgentIdFromEnvOrSelection } from '../utils/agent-resolver';
 import { createClient } from '../utils/client';
 import { deployAgent } from './agent/interactive/deploy';
 
@@ -8,12 +9,23 @@ import { deployAgent } from './agent/interactive/deploy';
  */
 export function configureDeployCommand(program: Command): Command {
   const operationsCmd = program
-    .command(`${CommandType.Deploy}`)
-    .description('Deploy your AI Agent')
+    .command(`${CommandType.Deploy} [agent]`)
+    .alias('d')
+    .description('Deploy agent')
     .option('--profile <n>', 'Profile to use')
-    .action(async (options) => {
+    .option('--confirm', 'Skip confirmation prompts')
+    .action(async (agentId, options) => {
       const client = createClient(options.profile);
-      await deployAgent(client);
+
+      const resolvedAgentId = await getAgentIdFromEnvOrSelection(
+        client,
+        agentId,
+      );
+      if (!resolvedAgentId) {
+        return;
+      }
+
+      await deployAgent(client, resolvedAgentId, options.confirm);
     });
 
   return operationsCmd;

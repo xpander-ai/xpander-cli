@@ -2,7 +2,7 @@ import chalk from 'chalk';
 import { Command } from 'commander';
 import inquirer from 'inquirer';
 import ora from 'ora';
-import { CommandType } from '../../../types';
+import { resolveAgentId } from '../../../utils/agent-resolver';
 import { createClient } from '../../../utils/client';
 
 /**
@@ -11,14 +11,21 @@ import { createClient } from '../../../utils/client';
 export function registerDeleteCommand(agentCmd: Command): void {
   // Delete an agent
   agentCmd
-    .command(CommandType.Delete)
+    .command('delete [agent]')
+    .alias('del')
+    .alias('rm')
     .description('Delete an agent')
-    .requiredOption('--id <agent_id>', 'ID of the agent to delete')
+    .option('--agent-id <agent_id>', 'Agent name or ID to delete')
+    .option('--agent-name <agent_name>', 'Agent name or ID to delete')
     .option('--confirm', 'Skip confirmation prompt')
     .option('--profile <name>', 'Profile to use')
-    .action(async (options) => {
+    .action(async (agent, options) => {
+      // Use argument first, then flags
+      const agentNameOrId = agent || options.agentId || options.agentName;
+      const updatedOptions = { ...options, id: agentNameOrId };
+
       try {
-        let agentId = options.id;
+        let agentId = updatedOptions.id;
 
         // If no ID provided, prompt user to select from available agents
         if (!agentId) {
@@ -30,7 +37,7 @@ export function registerDeleteCommand(agentCmd: Command): void {
               }).start()
             : { succeed: console.log, fail: console.error, stop: () => {} };
 
-          const client = createClient();
+          const client = createClient(updatedOptions.profile);
           const agents = await client.getAgents();
 
           loadingSpinner.stop();
@@ -40,6 +47,13 @@ export function registerDeleteCommand(agentCmd: Command): void {
             return;
           }
 
+          // Sort agents by creation date (newest first)
+          const sortedAgents = [...agents].sort(
+            (a, b) =>
+              new Date(b.created_at).getTime() -
+              new Date(a.created_at).getTime(),
+          );
+
           console.log('\n');
           console.log(chalk.bold.red('⚠️ Delete Agent'));
           console.log(chalk.dim('─'.repeat(50)));
@@ -47,7 +61,7 @@ export function registerDeleteCommand(agentCmd: Command): void {
             chalk.yellow('Please select the agent you wish to delete:'),
           );
 
-          const choices = agents.map((agentItem) => ({
+          const choices = sortedAgents.map((agentItem) => ({
             name: `${agentItem.name} ${chalk.dim(`(${agentItem.id})`)}`,
             value: (agentId = agentItem.id),
           }));
@@ -63,10 +77,18 @@ export function registerDeleteCommand(agentCmd: Command): void {
           ]);
 
           agentId = answers.agentId;
+        } else {
+          // Resolve agent name to ID if needed
+          const client = createClient(updatedOptions.profile);
+          const resolvedId = await resolveAgentId(client, agentId);
+          if (!resolvedId) {
+            return;
+          }
+          agentId = resolvedId;
         }
 
         // Get agent details for confirmation
-        const client = createClient(options.profile);
+        const client = createClient(updatedOptions.profile);
         const agentData = await client.getAgent(agentId);
 
         if (!agentData) {

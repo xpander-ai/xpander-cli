@@ -3,6 +3,7 @@ import { Command } from 'commander';
 import inquirer from 'inquirer';
 import ora from 'ora';
 import { CommandType } from '../../../types';
+import { getTemplateById } from '../../../types/templates';
 import { XpanderClient } from '../../../utils/client';
 import { getApiKey } from '../../../utils/config';
 import { initializeAgentWithTemplate } from '../../../utils/template-cloner';
@@ -18,16 +19,27 @@ export function registerNewCommand(agentCmd: Command): void {
   // Create a new agent
   agentCmd
     .command(CommandType.New)
+    .alias('n')
     .description('Create a new agent')
     .option('--name <name>', 'Name for the new agent')
     .option('--model <model>', 'Model to use (default: gpt-4o)')
     .option('--profile <name>', 'Profile to use')
+    .option(
+      '--framework <framework>',
+      'Framework template to use (agno, agno-team, base)',
+    )
+    .option(
+      '--folder <folder>',
+      'Folder to initialize agent in (enables non-interactive mode)',
+    )
     .option('--json', 'Output result in JSON format')
     .action(async (options) => {
       try {
-        let { name, profile } = options as {
+        let { name, profile, framework, folder } = options as {
           name?: string;
           profile?: string;
+          framework?: string;
+          folder?: string;
         };
 
         const apiKey = getApiKey(profile);
@@ -51,21 +63,46 @@ export function registerNewCommand(agentCmd: Command): void {
         console.log('\n');
 
         // First, select template
-        console.log(chalk.cyan('Step 1: Choose a template for your agent\n'));
         let selectedTemplate;
-        try {
-          selectedTemplate = await selectTemplate();
-          displayTemplateInfo(selectedTemplate);
-        } catch (templateError: any) {
-          console.error(
-            chalk.red('❌ Template selection cancelled or failed:'),
-            templateError.message,
-          );
-          process.exit(1);
+        if (framework) {
+          // Non-interactive mode: use specified framework
+          selectedTemplate = getTemplateById(framework);
+          if (!selectedTemplate) {
+            console.error(
+              chalk.red(
+                `❌ Invalid framework: ${framework}. Available: agno, agno-team, base`,
+              ),
+            );
+            process.exit(1);
+          }
+          if (folder) {
+            console.log(chalk.cyan(`Using ${selectedTemplate.name} template`));
+          } else {
+            displayTemplateInfo(selectedTemplate);
+          }
+        } else {
+          // Interactive mode: prompt for template
+          console.log(chalk.cyan('Step 1: Choose a template for your agent\n'));
+          try {
+            selectedTemplate = await selectTemplate();
+            displayTemplateInfo(selectedTemplate);
+          } catch (templateError: any) {
+            console.error(
+              chalk.red('❌ Template selection cancelled or failed:'),
+              templateError.message,
+            );
+            process.exit(1);
+          }
         }
 
-        // If no name provided, prompt for it
+        // If no name provided, prompt for it (unless in non-interactive mode)
         if (!name) {
+          if (folder) {
+            console.error(
+              chalk.red('❌ --name is required when using --folder'),
+            );
+            process.exit(1);
+          }
           console.log(chalk.cyan('\nStep 2: Name your agent\n'));
           const nameAnswer = await inquirer.prompt([
             {
@@ -154,12 +191,17 @@ export function registerNewCommand(agentCmd: Command): void {
         console.log(chalk.green.bold('\n✅ Agent creation complete!\n'));
 
         // Now initialize with the selected template
-        console.log(chalk.cyan('Step 3: Initialize agent with template\n'));
+        if (folder) {
+          console.log(chalk.cyan(`Initializing agent in ${folder}...`));
+        } else {
+          console.log(chalk.cyan('Step 3: Initialize agent with template\n'));
+        }
         try {
           await initializeAgentWithTemplate(
             client,
             createdAgent.id,
             selectedTemplate,
+            !!folder, // nonInteractive mode when folder is specified
           );
         } catch (templateError: any) {
           console.error(

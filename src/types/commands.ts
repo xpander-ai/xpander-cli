@@ -25,6 +25,23 @@ export enum CommandType {
   Create = 'create',
   Delete = 'delete',
   Update = 'update',
+  Edit = 'edit',
+  Open = 'open',
 }
 
-export const allCommands = Object.values(CommandType) as string[];
+export const allCommands = [
+  ...Object.values(CommandType).filter(
+    (cmd) => cmd !== 'interfaces' && cmd !== 'operations',
+  ),
+  // Add aliases
+  'a',
+  'c',
+  'd',
+  'i',
+  'l',
+  'n',
+  'o',
+  'g',
+  'del',
+  'rm',
+] as string[];

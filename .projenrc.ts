@@ -17,11 +17,12 @@ const project = new typescript.TypeScriptProject({
   release: true,
   releaseToNpm: true,
 
-  minNodeVersion: '22.15.0',
+  minNodeVersion: '20.18.1',
 
   // Binary entry point for the CLI
   bin: {
     xpander: 'lib/index.js',
+    x: 'lib/index.js',
   },
 
   // TypeScript configuration

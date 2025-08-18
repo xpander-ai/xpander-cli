@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import boxen from 'boxen';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import inquirer from 'inquirer';
@@ -10,26 +11,19 @@ import { configureConfigureCommand } from './commands/configure';
 import { configureDeployCommand } from './commands/deploy';
 import { configureDevCommand } from './commands/dev';
 import { configureInitializeCommand } from './commands/initialize';
-import { configureInterfacesCommands } from './commands/interfaces/index';
+// import { configureInterfacesCommands } from './commands/interfaces/index';
 import {
   configureLoginCommand,
   configureProfileCommand,
 } from './commands/login';
 import { configureLogsCommand } from './commands/logs';
-import { configureOperationsCommand } from './commands/operations/index';
+// import { configureOperationsCommand } from './commands/operations/index';
 import { configureRestartCommand } from './commands/restart';
 import { configureSecretsSyncCommand } from './commands/secrets-sync';
 import { configureStopCommand } from './commands/stop';
 import { allCommands } from './types';
-import { displayBanner } from './utils/banner';
-import { createClient } from './utils/client';
-import {
-  getApiKey,
-  getOrganizationId,
-  getCurrentProfile,
-  setPreferredFormat,
-  listProfiles,
-} from './utils/config';
+import { displayBanner, displayCustomHelp } from './utils/banner';
+import { getApiKey, setPreferredFormat, listProfiles } from './utils/config';
 export * from './types';
 
 // Read the version from package.json instead of hardcoding it
@@ -67,18 +61,14 @@ function isNonInteractive(): boolean {
 }
 
 async function isLoggedIn(): Promise<boolean> {
-  // Check for CLI-provided API key first
-  if (process.env.XPANDER_CLI_API_KEY) {
-    return true;
-  }
+  // Get API key from various sources
+  const apiKey =
+    process.env.XPANDER_CLI_API_KEY ||
+    process.env.xpander_api_key ||
+    process.env.XPANDER_API_KEY ||
+    getApiKey();
 
-  // Check for OS environment variables
-  if (process.env.xpander_api_key || process.env.XPANDER_API_KEY) {
-    return true;
-  }
-
-  // Check profile configuration
-  const apiKey = getApiKey();
+  // Just check if API key exists, don't validate with API call for performance
   return !!apiKey;
 }
 
@@ -111,44 +101,10 @@ async function promptLogin() {
   } else {
     console.log(
       chalk.yellow(
-        'You can configure your credentials later by running: xpander configure',
+        'You can configure your credentials later by running: xpander login',
       ),
     );
     process.exit(0);
-  }
-}
-
-async function showProfileInfo() {
-  const currentProfile = getCurrentProfile();
-  let orgId;
-  let agents = [];
-
-  try {
-    orgId = getOrganizationId();
-    let profileInfo = `Profile: ${chalk.green(currentProfile)}`;
-
-    if (orgId) {
-      profileInfo += ` | Organization ID: ${chalk.green(orgId)}`;
-
-      try {
-        const client = createClient();
-        const response = await client.getAgents();
-        agents = response || [];
-        profileInfo += ` | Agents: ${chalk.cyan(agents.length)}`;
-      } catch (error: any) {
-        if (error.status === 403) {
-          profileInfo += ` | ${chalk.yellow('Authorization error: API key may be invalid')}`;
-        } else {
-          profileInfo += ` | ${chalk.yellow('Error fetching agents')}`;
-        }
-      }
-    } else {
-      profileInfo += ` | ${chalk.yellow('No Organization ID - run "xpander agent list" to auto-detect')}`;
-    }
-
-    console.log(profileInfo);
-  } catch (error) {
-    console.log(`Profile: ${chalk.green(currentProfile)}`);
   }
 }
 
@@ -169,7 +125,7 @@ async function main(): Promise<void> {
 
   // Display the CLI banner, but skip if we're just setting the default profile
   if (!isSettingDefaultProfile) {
-    displayBanner();
+    await displayBanner();
   }
 
   // Check if they're running a command or just showing help
@@ -197,6 +153,8 @@ async function main(): Promise<void> {
 
   // Initialize the CLI program
   const program = new Command('xpander')
+    .alias('x')
+    .usage('[options] [command] (alias: x)')
     .version(version, '-v, --version', 'Output the version number')
     .description('Xpander.ai CLI for managing AI agents')
     .option('--output <format>', 'Output format (json, table)', 'table')
@@ -213,8 +171,8 @@ async function main(): Promise<void> {
   configureConfigureCommand(program);
   configureLoginCommand(program);
   configureProfileCommand(program);
-  configureInterfacesCommands(program);
-  configureOperationsCommand(program);
+  // configureInterfacesCommands(program);  // Hidden - needs refactoring
+  // configureOperationsCommand(program);   // Hidden - needs refactoring
   configureDeployCommand(program);
   configureRestartCommand(program);
   configureStopCommand(program);
@@ -226,21 +184,33 @@ async function main(): Promise<void> {
 
   // If no arguments or commands provided, show welcome message and help
   if (!hasArgs || (!hasCommand && !isRequestingHelp && !isRequestingVersion)) {
-    if (await isLoggedIn()) {
-      console.log(chalk.green('Welcome to Xpander CLI!'));
-      console.log('');
-      await showProfileInfo();
-    } else {
-      console.log(chalk.green('Welcome to Xpander CLI!'));
-      console.log('');
+    if (!(await isLoggedIn())) {
       console.log(
         chalk.yellow(
-          'You are not logged in. Run "xpander configure" to set up your credentials.',
+          'You are not logged in. Run "xpander login" to set up your credentials.',
         ),
       );
+      console.log('');
     }
+
+    displayCustomHelp();
+
+    // Show help resources
     console.log('');
-    program.outputHelp();
+    const helpResources = `📚 docs.xpander.ai
+💬 Slack: bit.ly/xpander-slack  
+🎯 Schedule a Demo: e.xpander.ai/demo`;
+
+    console.log(
+      boxen(helpResources, {
+        padding: 1,
+        margin: { top: 0, right: 0, bottom: 0, left: 2 },
+        borderStyle: 'round',
+        borderColor: '#743CFF',
+        title: chalk.hex('#743CFF')('Need Help?'),
+        titleAlignment: 'center',
+      }),
+    );
     return;
   }
 
@@ -328,7 +298,7 @@ async function main(): Promise<void> {
       );
       console.error(
         chalk.yellow(
-          'Try running "xpander configure" to update your API credentials.',
+          'Try running "xpander login" to update your API credentials.',
         ),
       );
     } else {
