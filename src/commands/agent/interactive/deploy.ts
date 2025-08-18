@@ -14,6 +14,7 @@ import { configureLogsCommand } from '../../logs';
 
 export async function deployAgent(
   client: XpanderClient,
+  _agentId?: string,
   skipDeploymentConfirmation: boolean = false,
 ) {
   console.log('\n');

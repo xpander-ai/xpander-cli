@@ -16,7 +16,7 @@ describe('Xpander CLI', () => {
 
   test('CLI shows help when run with --help', () => {
     const output = execSync(`node ${CLI_PATH} --help`).toString();
-    expect(output).toContain('Usage: xpander [options] [command]');
+    expect(output).toContain('Usage: xpander|x [options] [command]');
     expect(output).toContain('Xpander.ai CLI for managing AI agents');
     expect(output).toContain('configure');
     expect(output).toContain('agent');

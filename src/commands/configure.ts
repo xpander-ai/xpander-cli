@@ -85,7 +85,8 @@ async function verifyProfile(profileName: string): Promise<boolean> {
 export function configureConfigureCommand(program: Command): void {
   program
     .command(CommandType.Configure)
-    .description('Configure your API credentials')
+    .alias('c')
+    .description('Configure API credentials')
     .option('--key <api_key>', 'Your Xpander API key')
     .option(
       '--org <organization_id>',
@@ -137,9 +138,23 @@ export function configureConfigureCommand(program: Command): void {
         const spinner = ora('Validating API key...').start();
 
         try {
-          // Instead of calling validateApiKey, we simply assume the key is valid
-          // The actual validation will happen when they try to use the API
-          const isValid = true; // Removed validateApiKey call
+          // Validate API key by making a test request
+          let isValid = false;
+          try {
+            const testClient = createClient(profileName);
+            await testClient.getAgents();
+            isValid = true;
+          } catch (validationError: any) {
+            if (
+              validationError.status === 401 ||
+              validationError.status === 403
+            ) {
+              isValid = false;
+            } else {
+              // Network or other errors - assume key might be valid
+              isValid = true;
+            }
+          }
 
           if (isValid) {
             spinner.succeed('API key validation successful');
@@ -239,6 +254,31 @@ export function configureConfigureCommand(program: Command): void {
       console.log(`Credentials stored at: ${chalk.cyan(credsFilePath)}`);
       console.log(`Profile: ${chalk.green(profileName)}`);
       console.log(`\nConfiguration successful.`);
+
+      // Show help resources
+      console.log('\n' + chalk.bold.blue('🚀 Ready to build AI agents!'));
+      console.log('');
+      console.log(chalk.bold('Next steps:'));
+      console.log(
+        '• ' + chalk.cyan('xpander agent list') + ' - See your agents',
+      );
+      console.log(
+        '• ' + chalk.cyan('xpander agent new') + ' - Create new agent',
+      );
+      console.log('');
+      console.log(chalk.bold('Need help?'));
+      console.log(
+        '• Join our Slack: ' +
+          chalk.blue(
+            'https://join.slack.com/t/xpandercommunity/shared_invite/zt-2mt2xkxkz-omM7f~_h2jcuzFudrYtZQQ',
+          ),
+      );
+      console.log(
+        '• Schedule free consultation: ' +
+          chalk.blue(
+            'https://e.xpander.ai/meetings/xpander/book-a-demo-website',
+          ),
+      );
     });
 
   program

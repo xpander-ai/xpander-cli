@@ -1,57 +1,53 @@
 import { Command } from 'commander';
 import { CommandType } from '../types';
-import { getTemplateById } from '../types/templates';
-import { createClient } from '../utils/client';
-import { initializeAgentWithTemplate } from '../utils/template-cloner';
-import {
-  displayTemplateInfo,
-  selectTemplate,
-} from '../utils/template-selector';
-import { initializeAgent } from './agent/interactive/initialize';
+import { registerInitCommand } from './agent/commands/init';
 
 /**
  * Register init command
  */
 export function configureInitializeCommand(program: Command): Command {
-  const operationsCmd = program
+  const initCmd = program
     .command(`${CommandType.Initialize}`)
-    .description('Initialize AI Agent into current workdir')
+    .alias('i')
+    .description('Initialize agent in current directory')
     .option('--profile <n>', 'Profile to use')
-    .argument('[agent-id]', 'Agent ID to initialize')
-    .option('--agno', 'Use Agno template')
-    .option('--base', 'Use Base template')
+    .argument('[agent]', 'Agent name or ID to initialize')
+    .option(
+      '--framework <framework>',
+      'Framework template to use (agno, agno-team, base)',
+    )
+    .option(
+      '--folder <folder>',
+      'Folder to initialize agent in (enables non-interactive mode)',
+    )
+    .option('--agno', 'Use Agno template (deprecated: use --framework agno)')
+    .option('--base', 'Use Base template (deprecated: use --framework base)')
     .option('--template', 'Use template selection for initialization')
     .action(async (agentId, options) => {
-      const client = createClient(options.profile);
+      // This is now just a shortcut to agent init - delegate to the agent init command
+      const agentInitCommand = new Command('init');
+      registerInitCommand(agentInitCommand);
 
-      // Determine if we should use template-based initialization
-      const shouldUseTemplate =
-        options.template || options.agno || options.base;
-
-      if (shouldUseTemplate) {
-        let selectedTemplate;
-
-        if (options.agno) {
-          selectedTemplate = getTemplateById('agno');
-        } else if (options.base) {
-          selectedTemplate = getTemplateById('base');
-        } else {
-          // Interactive template selection
-          selectedTemplate = await selectTemplate();
-        }
-
-        if (!selectedTemplate) {
-          console.error('Template not found or not available');
-          process.exit(1);
-        }
-
-        displayTemplateInfo(selectedTemplate);
-        await initializeAgentWithTemplate(client, agentId, selectedTemplate);
-      } else {
-        // Standard initialization - will prompt for template if agentId is provided
-        await initializeAgent(client, agentId);
+      // Convert legacy options to new format
+      if (options.agno && !options.framework) {
+        options.framework = 'agno';
       }
+      if (options.base && !options.framework) {
+        options.framework = 'base';
+      }
+
+      // Execute the agent init command with the same options
+      const initSubCommand = agentInitCommand.commands[0];
+      await initSubCommand.parseAsync(
+        [
+          agentId,
+          ...Object.entries(options).flatMap(([key, value]) =>
+            value === true ? [`--${key}`] : value ? [`--${key}`, value] : [],
+          ),
+        ],
+        { from: 'user' },
+      );
     });
 
-  return operationsCmd;
+  return initCmd;
 }

@@ -23,7 +23,8 @@ import {
 export function configureLoginCommand(program: Command): void {
   program
     .command(CommandType.Login)
-    .description('Log in to Xpander')
+    .alias('l')
+    .description('Login to Xpander')
     .option('--profile <name>', 'Profile name to use')
     .option('--new', 'Create a new profile even if one exists')
     .action(async (options) => {
@@ -183,6 +184,20 @@ export function configureLoginCommand(program: Command): void {
             chalk.yellow('xpander profile --switch <name>'),
         );
         console.log();
+        console.log(chalk.blue('🆘 Need Help?'));
+        console.log(
+          chalk.gray('  • Join our Slack: ') +
+            chalk.blue(
+              'https://join.slack.com/t/xpandercommunity/shared_invite/zt-2mt2xkxkz-omM7f~_h2jcuzFudrYtZQQ',
+            ),
+        );
+        console.log(
+          chalk.gray('  • Free consultation: ') +
+            chalk.blue(
+              'https://e.xpander.ai/meetings/xpander/book-a-demo-website',
+            ),
+        );
+        console.log();
         console.log(chalk.green('✓ Profile saved to ~/.xpander'));
         spinner.stop();
 
@@ -205,7 +220,7 @@ export function configureLoginCommand(program: Command): void {
 export function configureProfileCommand(program: Command): void {
   program
     .command(CommandType.Profile)
-    .description('Manage profiles for different organizations')
+    .description('Manage profiles')
     .option('-l, --list', 'List all available profiles')
     .option('-c, --current', 'Show current profile')
     .option('-s, --switch <profileName>', 'Switch to a different profile')

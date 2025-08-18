@@ -18,6 +18,7 @@ export async function cloneTemplate(
   destPath: string,
   client: XpanderClient,
   agentId: string,
+  nonInteractive?: boolean,
 ): Promise<void> {
   const tmpFolder = path.join(os.tmpdir(), `template_tmp_${Date.now()}`);
   let askedXpanderHandlerOverwrite = false;
@@ -59,7 +60,9 @@ export async function cloneTemplate(
       const destFilePath = path.join(destPath, file);
 
       if (file === 'xpander_handler.py' && (await fileExists(destFilePath))) {
-        if (!askedXpanderHandlerOverwrite) {
+        if (nonInteractive) {
+          overwriteXpanderHandler = false; // Don't overwrite in non-interactive mode
+        } else if (!askedXpanderHandlerOverwrite) {
           const { overwrite } = await inquirer.prompt([
             {
               type: 'confirm',
@@ -76,7 +79,9 @@ export async function cloneTemplate(
       }
 
       if (file === 'Dockerfile' && (await fileExists(destFilePath))) {
-        if (!askedDockerfileOverwrite) {
+        if (nonInteractive) {
+          overwriteDockerfile = false; // Don't overwrite in non-interactive mode
+        } else if (!askedDockerfileOverwrite) {
           const { overwrite } = await inquirer.prompt([
             {
               type: 'confirm',
@@ -93,7 +98,9 @@ export async function cloneTemplate(
       }
 
       if (file === '.dockerignore' && (await fileExists(destFilePath))) {
-        if (!askedDockerignoreOverwrite) {
+        if (nonInteractive) {
+          overwriteDockerignore = false; // Don't overwrite in non-interactive mode
+        } else if (!askedDockerignoreOverwrite) {
           const { overwrite } = await inquirer.prompt([
             {
               type: 'confirm',
@@ -178,6 +185,7 @@ export async function initializeAgentWithTemplate(
   client: XpanderClient,
   agentId: string,
   template: AgentTemplate,
+  nonInteractive?: boolean,
 ): Promise<void> {
   console.log('\n');
   console.log(chalk.bold.blue('🚀 Initializing Agent with Template'));
@@ -201,43 +209,54 @@ export async function initializeAgentWithTemplate(
 
     let currentDirectory = process.cwd();
     if (!(await pathIsEmpty(currentDirectory))) {
-      const { action } = await inquirer.prompt([
-        {
-          type: 'list',
-          name: 'action',
-          message:
-            'The current directory is not empty. What would you like to do?',
-          choices: [
-            {
-              name: 'Continue in current directory (you will be prompted before overwriting files)',
-              value: 'continue',
-            },
-            {
-              name: `Create a new subfolder "${agent?.name || 'agent'}"`,
-              value: 'subfolder',
-            },
-            { name: 'Cancel initialization', value: 'cancel' },
-          ],
-          default: 'subfolder',
-        },
-      ]);
+      if (nonInteractive) {
+        // In non-interactive mode, continue in current directory
+        currentDirectory = process.cwd();
+      } else {
+        const { action } = await inquirer.prompt([
+          {
+            type: 'list',
+            name: 'action',
+            message:
+              'The current directory is not empty. What would you like to do?',
+            choices: [
+              {
+                name: 'Continue in current directory (you will be prompted before overwriting files)',
+                value: 'continue',
+              },
+              {
+                name: `Create a new subfolder "${agent?.name || 'agent'}"`,
+                value: 'subfolder',
+              },
+              { name: 'Cancel initialization', value: 'cancel' },
+            ],
+            default: 'subfolder',
+          },
+        ]);
 
-      if (action === 'cancel') {
-        initializationSpinner.info('Initialization aborted.');
-        return;
-      }
+        if (action === 'cancel') {
+          initializationSpinner.info('Initialization aborted.');
+          return;
+        }
 
-      if (action === 'subfolder') {
-        const folderName = agent?.name || 'agent';
-        const newDirectory = path.join(currentDirectory, folderName);
-        await fs.mkdir(newDirectory, { recursive: true });
-        currentDirectory = newDirectory;
-        console.log(chalk.green(`✓ Created subfolder: ${folderName}`));
+        if (action === 'subfolder') {
+          const folderName = agent?.name || 'agent';
+          const newDirectory = path.join(currentDirectory, folderName);
+          await fs.mkdir(newDirectory, { recursive: true });
+          currentDirectory = newDirectory;
+          console.log(chalk.green(`✓ Created subfolder: ${folderName}`));
+        }
       }
     }
 
     initializationSpinner.text = `Initializing ${agent?.name} with ${template.name} template`;
-    await cloneTemplate(template, currentDirectory, client, agentId);
+    await cloneTemplate(
+      template,
+      currentDirectory,
+      client,
+      agentId,
+      nonInteractive,
+    );
 
     initializationSpinner.succeed(
       `Agent initialized successfully with ${template.name} template`,
