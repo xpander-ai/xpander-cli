@@ -17,6 +17,7 @@ export enum CommandType {
   Restart = 'restart',
   Stop = 'stop',
   Logs = 'logs',
+  Invoke = 'invoke',
   Exit = 'exit',
   // Crud
   List = 'list',
