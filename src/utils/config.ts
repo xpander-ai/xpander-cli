@@ -6,6 +6,7 @@ import * as fs from 'fs-extra';
 const CONFIG_DIR = path.join(os.homedir(), '.xpander');
 const CREDS_FILE = path.join(CONFIG_DIR, 'credentials');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config');
+const AGENTS_CACHE_FILE = path.join(CONFIG_DIR, 'agents_cache.json');
 
 // Default profile name
 const DEFAULT_PROFILE = 'default';
@@ -386,4 +387,83 @@ export function setDefaultProfile(profileName: string): void {
 
   // Also update the current profile in the config file for backward compatibility
   setCurrentProfile(profileName);
+}
+
+// Agent caching functionality
+interface AgentCacheData {
+  agents: any[];
+  timestamp: number;
+  profile: string;
+  organizationId: string;
+}
+
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // 1 day in milliseconds
+
+/**
+ * Get cached agents for the current profile/organization
+ */
+export function getCachedAgents(profileName?: string): any[] | null {
+  try {
+    if (!fs.existsSync(AGENTS_CACHE_FILE)) {
+      return null;
+    }
+
+    const currentProfile = profileName || getCurrentProfile();
+    const currentOrgId = getOrganizationId(currentProfile);
+
+    const cacheData: AgentCacheData = JSON.parse(
+      fs.readFileSync(AGENTS_CACHE_FILE, 'utf8'),
+    );
+
+    // Check if cache is valid (same profile, org, and not expired)
+    const now = Date.now();
+    const isExpired = now - cacheData.timestamp > CACHE_DURATION;
+    const isSameProfile = cacheData.profile === currentProfile;
+    const isSameOrg = cacheData.organizationId === currentOrgId;
+
+    if (isExpired || !isSameProfile || !isSameOrg) {
+      return null;
+    }
+
+    return cacheData.agents;
+  } catch (error) {
+    // If there's any error reading cache, return null to force refresh
+    return null;
+  }
+}
+
+/**
+ * Cache agents for the current profile/organization
+ */
+export function setCachedAgents(agents: any[], profileName?: string): void {
+  try {
+    ensureConfigDirExists();
+
+    const currentProfile = profileName || getCurrentProfile();
+    const currentOrgId = getOrganizationId(currentProfile);
+
+    const cacheData: AgentCacheData = {
+      agents,
+      timestamp: Date.now(),
+      profile: currentProfile,
+      organizationId: currentOrgId,
+    };
+
+    fs.writeFileSync(AGENTS_CACHE_FILE, JSON.stringify(cacheData, null, 2));
+  } catch (error) {
+    // Silently fail cache writes to avoid breaking the main functionality
+  }
+}
+
+/**
+ * Clear the agents cache
+ */
+export function clearAgentsCache(): void {
+  try {
+    if (fs.existsSync(AGENTS_CACHE_FILE)) {
+      fs.unlinkSync(AGENTS_CACHE_FILE);
+    }
+  } catch (error) {
+    // Silently fail cache clearing
+  }
 }

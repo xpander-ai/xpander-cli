@@ -25,7 +25,6 @@ coverage
 build/Release
 node_modules/
 jspm_packages/
-package-lock.json
 *.tsbuildinfo
 .eslintcache
 *.tgz

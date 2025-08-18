@@ -4,6 +4,7 @@ import { registerDeleteCommand } from './commands/delete';
 import { registerEditCommand } from './commands/edit';
 import { registerGetCommand } from './commands/get';
 import { registerInitCommand } from './commands/init';
+import { registerInvokeCommand } from './commands/invoke';
 import { registerListCommand } from './commands/list';
 import { registerNewCommand } from './commands/new';
 import { registerTemplatesCommand } from './commands/templates';
@@ -43,6 +44,7 @@ export function agent(program: Command): void {
   registerDeleteCommand(agentCmd);
   registerUpdateCommand(agentCmd);
   registerEditCommand(agentCmd);
+  registerInvokeCommand(agentCmd);
 
   // Add agent operation subcommands
   agentCmd

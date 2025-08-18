@@ -123,8 +123,9 @@ async function main(): Promise<void> {
     }
   }
 
-  // Display the CLI banner, but skip if we're just setting the default profile
-  if (!isSettingDefaultProfile) {
+  // Display the CLI banner, but skip if we're just setting the default profile or running invoke
+  const isInvokeCommand = process.argv.includes('invoke');
+  if (!isSettingDefaultProfile && !isInvokeCommand) {
     await displayBanner();
   }
 

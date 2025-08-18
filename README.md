@@ -51,6 +51,9 @@ xpander configure
 # Create a new agent (interactive mode)
 xpander agent new
 
+# Test your agent with a message
+xpander agent invoke "Hello, what can you do?"
+
 # Explore available interfaces
 xpander interfaces
 
