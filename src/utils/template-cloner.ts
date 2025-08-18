@@ -186,6 +186,7 @@ export async function initializeAgentWithTemplate(
   agentId: string,
   template: AgentTemplate,
   nonInteractive?: boolean,
+  targetFolder?: string,
 ): Promise<void> {
   console.log('\n');
   console.log(chalk.bold.blue('🚀 Initializing Agent with Template'));
@@ -207,11 +208,19 @@ export async function initializeAgentWithTemplate(
 
     initializationSpinner.info(`Agent ${agent?.name} retrieved successfully`);
 
-    let currentDirectory = process.cwd();
+    let currentDirectory = targetFolder
+      ? path.resolve(targetFolder.replace(/^~/, os.homedir()))
+      : process.cwd();
+
+    // Create target directory if it doesn't exist
+    if (targetFolder) {
+      await fs.mkdir(currentDirectory, { recursive: true });
+    }
+
     if (!(await pathIsEmpty(currentDirectory))) {
       if (nonInteractive) {
-        // In non-interactive mode, continue in current directory
-        currentDirectory = process.cwd();
+        // In non-interactive mode, continue in specified/current directory
+        // currentDirectory is already set above
       } else {
         const { action } = await inquirer.prompt([
           {

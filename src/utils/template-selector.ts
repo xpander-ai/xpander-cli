@@ -115,10 +115,5 @@ export function displayTemplateInfo(template: AgentTemplate): void {
   console.log(chalk.bold('Name:        ') + chalk.cyan(template.name));
   console.log(chalk.bold('Category:    ') + chalk.yellow(template.category));
   console.log(chalk.bold('Description: ') + template.description);
-  if (template.repositoryUrl) {
-    console.log(
-      chalk.bold('Repository:  ') + chalk.dim(template.repositoryUrl),
-    );
-  }
   console.log(chalk.dim('─'.repeat(50)));
 }

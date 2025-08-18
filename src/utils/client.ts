@@ -241,6 +241,31 @@ export class XpanderClient {
   }
 
   /**
+   * Gets agent webhook details from the inbound API
+   */
+  async getAgentWebhookDetails(agentId: string): Promise<any> {
+    try {
+      // Use absolute URL to make sure we're hitting the right endpoint
+      const webhookUrl = `https://inbound.xpander.ai/agents/${agentId}`;
+      const response = await axios.get(webhookUrl, {
+        headers: {
+          'x-api-key': this.apiKey,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      return response.data;
+    } catch (error: any) {
+      console.error(
+        chalk.red('Error fetching agent webhook details:'),
+        error.response?.status || 'Network error',
+        error.response?.data || error.message || error,
+      );
+      throw error;
+    }
+  }
+
+  /**
    * Creates a new agent
    */
   async createAgent(name: string): Promise<Agent> {

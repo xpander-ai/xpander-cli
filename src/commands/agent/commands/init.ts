@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import { getTemplateById } from '../../../types/templates';
+import { getAgentIdFromEnvOrSelection } from '../../../utils/agent-resolver';
 import { createClient } from '../../../utils/client';
 import { initializeAgentWithTemplate } from '../../../utils/template-cloner';
 import {
@@ -28,24 +29,25 @@ export function registerInitCommand(parentCommand: Command): void {
       'Folder to initialize agent in (enables non-interactive mode)',
     )
     .option('--template', 'Use template selection for initialization')
-    .action(async (agentId, options) => {
+    .action(async (agentIdOrName, options) => {
       const client = createClient(options.profile);
       const { framework, folder } = options;
-      const isNonInteractive = !!(framework && folder);
+      const isNonInteractive = !!folder;
+
+      // Resolve agent name/ID to actual agent ID
+      const agentId = await getAgentIdFromEnvOrSelection(client, agentIdOrName);
 
       if (!agentId) {
         if (isNonInteractive) {
-          console.error(
-            'Agent ID is required when using --framework and --folder',
-          );
+          console.error('Agent ID is required when using --folder');
           process.exit(1);
         }
         // Standard initialization without agent ID
-        await initializeAgent(client, agentId);
+        await initializeAgent(client, undefined);
         return;
       }
 
-      if (framework || options.template) {
+      if (framework || options.template || folder) {
         // Template-based initialization
         let selectedTemplate;
 
@@ -61,6 +63,15 @@ export function registerInitCommand(parentCommand: Command): void {
           if (!folder) {
             displayTemplateInfo(selectedTemplate);
           }
+        } else if (folder) {
+          // Auto-detect template when only folder is specified - default to agno
+          selectedTemplate = getTemplateById('agno');
+          if (!selectedTemplate) {
+            console.error(
+              'Failed to determine template. Please specify --framework',
+            );
+            process.exit(1);
+          }
         } else {
           // Interactive template selection
           selectedTemplate = await selectTemplate();
@@ -73,6 +84,7 @@ export function registerInitCommand(parentCommand: Command): void {
             agentId,
             selectedTemplate,
             isNonInteractive,
+            folder,
           );
         } catch (error: any) {
           console.error('Template initialization failed:', error.message);
