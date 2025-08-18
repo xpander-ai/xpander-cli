@@ -20,7 +20,7 @@ export function registerNewCommand(agentCmd: Command): void {
   agentCmd
     .command(CommandType.New)
     .alias('n')
-    .description('Create a new agent')
+    .description('Create a new agent with optional auto-initialization')
     .option('--name <name>', 'Name for the new agent')
     .option('--model <model>', 'Model to use (default: gpt-4o)')
     .option('--profile <name>', 'Profile to use')
@@ -32,14 +32,16 @@ export function registerNewCommand(agentCmd: Command): void {
       '--folder <folder>',
       'Folder to initialize agent in (enables non-interactive mode)',
     )
+    .option('--init', 'Show initialization wizard after creating agent')
     .option('--json', 'Output result in JSON format')
     .action(async (options) => {
       try {
-        let { name, profile, framework, folder } = options as {
+        let { name, profile, framework, folder, init } = options as {
           name?: string;
           profile?: string;
           framework?: string;
           folder?: string;
+          init?: boolean;
         };
 
         const apiKey = getApiKey(profile);
@@ -56,12 +58,6 @@ export function registerNewCommand(agentCmd: Command): void {
         console.log('\n');
         console.log(chalk.bold.blue('✨ Agent Creation Wizard ✨'));
         console.log(chalk.dim('─'.repeat(50)));
-        console.log(
-          chalk.yellow('Create a powerful AI agent for your organization'),
-        );
-        console.log(chalk.dim('─'.repeat(50)));
-        console.log('\n');
-
         // First, select template
         let selectedTemplate;
         if (framework) {
@@ -159,60 +155,105 @@ export function registerNewCommand(agentCmd: Command): void {
             ),
         );
 
-        // Show instructions if available in a cleaner format
-        if (
-          createdAgent.instructions &&
-          (createdAgent.instructions.role ||
-            createdAgent.instructions.goal ||
-            createdAgent.instructions.general)
-        ) {
-          console.log('\n' + chalk.bold('Instructions:'));
-
-          if (createdAgent.instructions.role) {
-            console.log(
-              chalk.bold('• Role:    ') + createdAgent.instructions.role,
-            );
-          }
-
-          if (createdAgent.instructions.goal) {
-            console.log(
-              chalk.bold('• Goal:    ') + createdAgent.instructions.goal,
-            );
-          }
-
-          if (createdAgent.instructions.general) {
-            console.log(
-              chalk.bold('• General: ') + createdAgent.instructions.general,
-            );
-          }
-        }
-
         console.log(chalk.dim('─'.repeat(50)));
         console.log(chalk.green.bold('\n✅ Agent creation complete!\n'));
 
-        // Now initialize with the selected template
+        // Handle initialization based on provided options
         if (folder) {
+          // Auto-initialize in the specified folder
           console.log(chalk.cyan(`Initializing agent in ${folder}...`));
-        } else {
+          try {
+            await initializeAgentWithTemplate(
+              client,
+              createdAgent.id,
+              selectedTemplate,
+              true, // nonInteractive mode when folder is specified
+              folder,
+            );
+          } catch (templateError: any) {
+            console.error(
+              chalk.red('❌ Template initialization failed:'),
+              templateError.message,
+            );
+            console.log(
+              chalk.yellow(
+                'You can initialize the agent later using: xpander agent init ' +
+                  createdAgent.id,
+              ),
+            );
+          }
+        } else if (init) {
+          // Show initialization wizard
           console.log(chalk.cyan('Step 3: Initialize agent with template\n'));
-        }
-        try {
-          await initializeAgentWithTemplate(
-            client,
-            createdAgent.id,
-            selectedTemplate,
-            !!folder, // nonInteractive mode when folder is specified
+          try {
+            await initializeAgentWithTemplate(
+              client,
+              createdAgent.id,
+              selectedTemplate,
+              false, // interactive mode for wizard
+              undefined, // no specific folder for wizard mode
+            );
+          } catch (templateError: any) {
+            console.error(
+              chalk.red('❌ Template initialization failed:'),
+              templateError.message,
+            );
+            console.log(
+              chalk.yellow(
+                'You can initialize the agent later using: xpander agent init ' +
+                  createdAgent.id,
+              ),
+            );
+          }
+        } else {
+          // Just return agent info without initialization
+          console.log(chalk.blue('🔑 Agent Information:'));
+          console.log(chalk.gray('Agent ID: ') + chalk.white(createdAgent.id));
+          console.log(chalk.gray('API Key: ') + chalk.white(apiKey));
+          console.log(
+            chalk.gray('Agent Workbench: ') +
+              chalk.blue(`https://app.xpander.ai/agents/${createdAgent.id}`),
           );
-        } catch (templateError: any) {
-          console.error(
-            chalk.red('❌ Template initialization failed:'),
-            templateError.message,
+
+          // Fetch the actual webhook URL from the agent endpoint
+          try {
+            const agentDetails = await client.getAgentWebhookDetails(
+              createdAgent.id,
+            );
+
+            // Extract webhook URL from response (adjust based on actual API response structure)
+            const webhookUrl =
+              agentDetails.webhook_url ||
+              `https://webhook.xpander.ai/?agent_id=${createdAgent.id}&asynchronous=false`;
+
+            console.log(chalk.gray('Webhook URL: ') + chalk.white(webhookUrl));
+
+            console.log('\n' + chalk.blue('🌐 Ready-to-use curl command:'));
+            console.log(chalk.cyan(`curl -X POST "${webhookUrl}" \\`));
+            console.log(chalk.cyan(`  -H "x-api-key: ${apiKey}" \\`));
+            console.log(chalk.cyan(`  -H "Content-Type: application/json" \\`));
+            console.log(
+              chalk.cyan(`  -d '{"message": "Hi, what can you do?"}' \\`),
+            );
+            console.log(chalk.cyan(`  | jq`));
+          } catch (webhookError) {
+            console.log(
+              chalk.yellow(
+                '⚠️ Could not fetch webhook URL, using default format',
+              ),
+            );
+          }
+
+          console.log('\n' + chalk.yellow('💡 Next steps:'));
+          console.log(
+            chalk.dim('• Download the Agent code locally: ') +
+              chalk.cyan(`x a i ${createdAgent.name}`),
           );
           console.log(
-            chalk.yellow(
-              'You can initialize the agent later using: xpander agent init ' +
-                createdAgent.id,
-            ),
+            chalk.dim('• Or to a specific folder: ') +
+              chalk.cyan(
+                `x a i ${createdAgent.name} --folder "~/Developer/Agents/${createdAgent.name}"`,
+              ),
           );
         }
       } catch (error: any) {
