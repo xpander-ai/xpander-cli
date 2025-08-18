@@ -1050,9 +1050,9 @@
   integrity sha512-D0CFMMtydbJAegzOyHjtiKPLlvnm3iTZyZRSZoLq2mRhDdmLfIWOCYPfQJ4cu2erKghU++QvjcUjp/5h7hESpA==
 
 "@types/inquirer@^9.0.7":
-  version "9.0.7"
-  resolved "https://registry.npmjs.org/@types/inquirer/-/inquirer-9.0.7.tgz"
-  integrity sha512-Q0zyBupO6NxGRZut/JdmqYKOnN95Eg5V8Csg3PGKkP+FnvsUZx1jAyK7fztIszxxMuoBA6E3KXWvdZVXIpx60g==
+  version "9.0.9"
+  resolved "https://registry.yarnpkg.com/@types/inquirer/-/inquirer-9.0.9.tgz#c659dffbb8c2dab112324c7ae19b3303a972a96d"
+  integrity sha512-/mWx5136gts2Z2e5izdoRCo46lPp5TMs9R15GTSsgg/XnZyxDWVqoVU3R9lWnccKpqwsJLvRoxbCjoJtZB7DSw==
   dependencies:
     "@types/through" "*"
     rxjs "^7.2.0"
