@@ -280,6 +280,32 @@ export async function initializeAgent(
       }
     }
 
+    // Check if .env already exists and ask for confirmation
+    const envExists = await fs
+      .access(envPath)
+      .then(() => true)
+      .catch(() => false);
+
+    if (envExists) {
+      console.log('\n');
+      console.log(chalk.yellow('⚠️  .env file already exists in this directory.'));
+      
+      const { shouldOverwrite } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'shouldOverwrite',
+          message: 'Do you want to overwrite it with the cloud settings?',
+          default: false,
+        },
+      ]);
+
+      if (!shouldOverwrite) {
+        console.log(chalk.blue('ℹ️  Keeping existing .env file unchanged'));
+        initializationSpinner.succeed(`Agent initialized successfully (kept existing .env)`);
+        return;
+      }
+    }
+
     await fs.writeFile(envPath, mergedLines.join('\n'));
 
     initializationSpinner.succeed(`Agent initialized successfully`);
