@@ -146,24 +146,40 @@ export async function cloneTemplate(
       XPANDER_AGENT_ID: `"${agentId}"`,
     };
 
+    const existingEnv = (await fileExists(envPath))
+      ? (await fs.readFile(envPath, 'utf-8')).split('\n')
+      : [];
+
     const exampleEnv = (await fileExists(envExamplePath))
       ? (await fs.readFile(envExamplePath, 'utf-8')).split('\n')
       : [];
 
     const keysToInsert = Object.keys(envVars);
 
-    // Start with example lines (preserving comments and structure)
-    const mergedLines: string[] = exampleEnv.map((line) => {
+    // Start with existing .env content if it exists, otherwise use example
+    const baseEnv = existingEnv.length > 0 ? existingEnv : exampleEnv;
+    const mergedLines: string[] = baseEnv.map((line: string) => {
       const trimmed = line.trim();
       if (trimmed.startsWith('#')) return line;
 
       const [key] = line.split('=', 1);
       if (keysToInsert.includes(key.trim())) {
-        return `${key}=${envVars[key.trim()]}`;
+        // Only update if the key doesn't already have a value (not empty or placeholder)
+        const existingValue = line.split('=').slice(1).join('=');
+        if (
+          !existingValue ||
+          existingValue.trim() === '' ||
+          existingValue.includes('your-') ||
+          existingValue.includes('placeholder')
+        ) {
+          return `${key}=${envVars[key.trim()]}`;
+        }
+        return line; // Keep existing value
       }
       return line;
     });
 
+    // Add any missing required keys
     for (const key of keysToInsert) {
       if (!mergedLines.some((line) => line.trim().startsWith(`${key}=`))) {
         mergedLines.push(`${key}=${envVars[key]}`);
