@@ -132,8 +132,7 @@ export function configureLoginCommand(program: Command): void {
       const spinner = ora('Authorizing').start();
 
       try {
-        const { organizationId, apiKey, firstName } =
-          await waitForAuthCallback();
+        const { organizationId, apiKey } = await waitForAuthCallback();
 
         // Save credentials to profile
         setCurrentProfile(profileName);
@@ -150,55 +149,25 @@ export function configureLoginCommand(program: Command): void {
           );
         }
 
-        // Display welcome message with enhanced formatting
-        console.log(chalk.cyan('\n🚀 Welcome to Xpander!'));
-        console.log(chalk.gray('━'.repeat(50)));
         console.log();
+        console.log(chalk.green('✓ Successfully logged in!'));
         console.log(
-          chalk.white(
-            `  Hi${firstName ? ' ' + chalk.bold(firstName) : ''}! You've successfully logged in.`,
+          chalk.gray(
+            `Profile: ${chalk.bold(profileName)} | Org: ${chalk.bold(organizationId || 'Auto-detect')}`,
           ),
         );
         console.log();
-        console.log(chalk.white(`  Profile: ${chalk.bold(profileName)}`));
+        console.log(chalk.blue('Next steps:'));
         console.log(
-          chalk.white(
-            `  Organization ID: ${chalk.bold(organizationId || 'Not set')}`,
-          ),
-        );
-        console.log(chalk.white(`  API Key: ${chalk.bold(apiKey)}`));
-        console.log();
-        console.log(chalk.gray('━'.repeat(50)));
-        console.log();
-        console.log(chalk.blue('💡 Quick Start Tips:'));
-        console.log(
-          chalk.gray('  • Initialize your first agent: ') +
-            chalk.yellow('xpander agent init'),
+          chalk.gray('  • Create agent: ') +
+            chalk.yellow('x a n --name "my-agent" --framework "agno"'),
         );
         console.log(
-          chalk.gray('  • Visit the platform: ') +
-            chalk.blue('https://app.xpander.ai'),
+          chalk.gray('  • Initialize locally: ') + chalk.yellow('x a i'),
         );
         console.log(
-          chalk.gray('  • Switch profiles: ') +
-            chalk.yellow('xpander profile --switch <name>'),
+          chalk.gray('  • Invoke agent: ') + chalk.yellow('x a invoke "hello"'),
         );
-        console.log();
-        console.log(chalk.blue('🆘 Need Help?'));
-        console.log(
-          chalk.gray('  • Join our Slack: ') +
-            chalk.blue(
-              'https://join.slack.com/t/xpandercommunity/shared_invite/zt-2mt2xkxkz-omM7f~_h2jcuzFudrYtZQQ',
-            ),
-        );
-        console.log(
-          chalk.gray('  • Free consultation: ') +
-            chalk.blue(
-              'https://e.xpander.ai/meetings/xpander/book-a-demo-website',
-            ),
-        );
-        console.log();
-        console.log(chalk.green('✓ Profile saved to ~/.xpander'));
         spinner.stop();
 
         // Ultimate solution: force exit with kill signal

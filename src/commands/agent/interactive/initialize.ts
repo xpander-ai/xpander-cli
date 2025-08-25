@@ -10,6 +10,7 @@ import ora from 'ora';
 import { AGENT_TEMPLATES } from '../../../types';
 import { XpanderClient } from '../../../utils/client';
 import { fileExists, pathIsEmpty } from '../../../utils/custom-agents';
+import { mergeEnvFile } from '../../../utils/custom_agents_utils/generic';
 
 const execAsync = promisify(exec);
 
@@ -251,36 +252,13 @@ export async function initializeAgent(
     const envPath = path.join(currentDirectory, '.env');
     const envExamplePath = path.join(currentDirectory, '.env.example');
 
-    const envVars: any = {
+    const envVars: Record<string, string> = {
       XPANDER_API_KEY: `"${client.apiKey}"`,
       XPANDER_ORGANIZATION_ID: `"${client.orgId!}"`,
       XPANDER_AGENT_ID: `"${agentId}"`,
     };
 
-    const exampleEnv = (await fileExists(envExamplePath))
-      ? (await fs.readFile(envExamplePath, 'utf-8')).split('\n')
-      : [];
-
-    const keysToInsert = Object.keys(envVars);
-
-    const mergedLines: string[] = exampleEnv.map((line) => {
-      const trimmed = line.trim();
-      if (trimmed.startsWith('#')) return line;
-
-      const [key] = line.split('=', 1);
-      if (keysToInsert.includes(key.trim())) {
-        return `${key}=${envVars[key.trim()]}`;
-      }
-      return line;
-    });
-
-    for (const key of keysToInsert) {
-      if (!mergedLines.some((line) => line.trim().startsWith(`${key}=`))) {
-        mergedLines.push(`${key}=${envVars[key]}`);
-      }
-    }
-
-    await fs.writeFile(envPath, mergedLines.join('\n'));
+    await mergeEnvFile(envPath, envVars, envExamplePath, false);
 
     initializationSpinner.succeed(`Agent initialized successfully`);
   } catch (error: any) {

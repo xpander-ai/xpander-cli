@@ -268,16 +268,12 @@ export function configureConfigureCommand(program: Command): void {
       console.log('');
       console.log(chalk.bold('Need help?'));
       console.log(
-        '• Join our Slack: ' +
-          chalk.blue(
-            'https://join.slack.com/t/xpandercommunity/shared_invite/zt-2mt2xkxkz-omM7f~_h2jcuzFudrYtZQQ',
-          ),
+        '• Join our Community Slack: ' +
+          chalk.blue('https://bit.ly/xpander-slack'),
       );
       console.log(
         '• Schedule free consultation: ' +
-          chalk.blue(
-            'https://e.xpander.ai/meetings/xpander/book-a-demo-website',
-          ),
+          chalk.blue('https://bit.ly/xpander-demo'),
       );
     });
 

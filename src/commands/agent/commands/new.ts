@@ -4,8 +4,8 @@ import inquirer from 'inquirer';
 import ora from 'ora';
 import { CommandType } from '../../../types';
 import { getTemplateById } from '../../../types/templates';
-import { XpanderClient } from '../../../utils/client';
-import { getApiKey } from '../../../utils/config';
+import { XpanderClient, displayBillingLimitError } from '../../../utils/client';
+import { getApiKey, clearAgentsCache } from '../../../utils/config';
 import { initializeAgentWithTemplate } from '../../../utils/template-cloner';
 import {
   selectTemplate,
@@ -137,6 +137,10 @@ export function registerNewCommand(agentCmd: Command): void {
 
         // Update spinner on success
         spinner.succeed(chalk.green(`Agent "${name}" created successfully!`));
+
+        // Clear agents cache to ensure fresh data on next fetch
+        clearAgentsCache();
+
         console.log('\n');
 
         console.log('\n');
@@ -224,6 +228,8 @@ export function registerNewCommand(agentCmd: Command): void {
           console.error('');
           console.error(chalk.red('❌ Error creating agent:'));
           console.error(chalk.red('Failed to create agent'));
+        } else if (error.status === 429) {
+          displayBillingLimitError();
         } else {
           console.error(
             chalk.red('❌ Error creating agent:'),

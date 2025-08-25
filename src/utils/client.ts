@@ -8,6 +8,25 @@ const API_BASE_URL = 'https://inbound.xpander.ai';
 const API_BASE_URL_STG = 'https://inbound.stg.xpander.ai';
 
 /**
+ * Display billing limit reached error message with upgrade instructions
+ */
+export function displayBillingLimitError(): void {
+  console.error(chalk.red('❌ Billing limit reached'));
+  console.log(chalk.yellow('Your account has reached its usage limit.'));
+  console.log('');
+  console.log(chalk.cyan('To continue using Xpander:'));
+  console.log(
+    chalk.white('  1. Visit the Xpander Console: https://app.xpander.ai'),
+  );
+  console.log(chalk.white('  2. Upgrade to Pay&Go plan'));
+  console.log(chalk.white('  3. Add a credit card to activate your account'));
+  console.log('');
+  console.log(
+    chalk.dim('This will enable unlimited usage with pay-per-use billing.'),
+  );
+}
+
+/**
  * Client for interacting with the Xpander API
  */
 export class XpanderClient {
@@ -103,6 +122,8 @@ export class XpanderClient {
             );
           } else if (status === 404) {
             console.error(chalk.red('API Error (404): Resource not found'));
+          } else if (status === 429) {
+            displayBillingLimitError();
           } else if (status === 500) {
             console.error(
               chalk.red(

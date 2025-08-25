@@ -4,6 +4,7 @@ import inquirer from 'inquirer';
 import ora from 'ora';
 import { resolveAgentId } from '../../../utils/agent-resolver';
 import { createClient } from '../../../utils/client';
+import { clearAgentsCache } from '../../../utils/config';
 
 /**
  * Register delete command
@@ -144,6 +145,9 @@ export function registerDeleteCommand(agentCmd: Command): void {
 
         if (success) {
           spinner.succeed(chalk.green(`Agent deleted successfully!`));
+
+          // Clear agents cache to ensure fresh data on next fetch
+          clearAgentsCache();
         } else {
           spinner.fail(
             chalk.yellow(`Could not delete agent. Please try again.`),

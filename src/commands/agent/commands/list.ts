@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { CommandType } from '../../../types';
-import { createClient } from '../../../utils/client';
+import { createClient, displayBillingLimitError } from '../../../utils/client';
 import { getApiKey } from '../../../utils/config';
 import { formatOutput } from '../../../utils/formatter';
 
@@ -117,6 +117,8 @@ export function registerListCommand(agentCmd: Command): void {
           console.error(
             chalk.yellow('Check your API key with "xpander profile --verify"'),
           );
+        } else if (error.status === 429) {
+          displayBillingLimitError();
         } else {
           console.error(
             chalk.red('Error fetching agents:'),
@@ -182,6 +184,8 @@ export function registerListCommand(agentCmd: Command): void {
           console.error(
             chalk.yellow('Check your API key with "xpander profile --verify"'),
           );
+        } else if (error.status === 429) {
+          displayBillingLimitError();
         } else {
           console.error(
             chalk.red('Error fetching agents:'),

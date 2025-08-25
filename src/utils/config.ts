@@ -1,6 +1,7 @@
 import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs-extra';
+import { getXpanderConfigFromEnvFile } from './custom_agents_utils/generic';
 
 // Config directory and files in user's home directory
 const CONFIG_DIR = path.join(os.homedir(), '.xpander');
@@ -204,6 +205,55 @@ export function getApiKey(profile?: string): string {
   }
 
   // Fall back to OS environment variables only if no profile config exists
+  if (process.env.xpander_api_key) {
+    return process.env.xpander_api_key;
+  }
+  if (process.env.XPANDER_API_KEY) {
+    return process.env.XPANDER_API_KEY;
+  }
+
+  return '';
+}
+
+/**
+ * Get the API key for a profile (async version that can read from .env files)
+ * Priority: CLI flag > Profile configuration > Local .env file > OS environment variables
+ */
+export async function getApiKeyAsync(profile?: string): Promise<string> {
+  // Check CLI-provided API key first (highest priority)
+  if (process.env.XPANDER_CLI_API_KEY) {
+    return process.env.XPANDER_CLI_API_KEY;
+  }
+
+  const profileName = profile || getCurrentProfile();
+  ensureConfigDirExists();
+
+  // If a specific profile is requested, use profile configuration first
+  if (profile) {
+    const creds = parseCredsFile(CREDS_FILE);
+    if (creds[profileName] && creds[profileName].xpander_api_key) {
+      return creds[profileName].xpander_api_key;
+    }
+    return '';
+  }
+
+  // For default profile, check profile config first
+  const creds = parseCredsFile(CREDS_FILE);
+  if (creds[profileName] && creds[profileName].xpander_api_key) {
+    return creds[profileName].xpander_api_key;
+  }
+
+  // Check local .env file
+  try {
+    const config = await getXpanderConfigFromEnvFile(process.cwd());
+    if (config.api_key) {
+      return config.api_key;
+    }
+  } catch (error) {
+    // No .env file or no api_key in it, continue to OS environment variables
+  }
+
+  // Fall back to OS environment variables only if no profile config or .env exists
   if (process.env.xpander_api_key) {
     return process.env.xpander_api_key;
   }
