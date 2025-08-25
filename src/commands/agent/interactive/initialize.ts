@@ -288,8 +288,10 @@ export async function initializeAgent(
 
     if (envExists) {
       console.log('\n');
-      console.log(chalk.yellow('⚠️  .env file already exists in this directory.'));
-      
+      console.log(
+        chalk.yellow('⚠️  .env file already exists in this directory.'),
+      );
+
       const { shouldOverwrite } = await inquirer.prompt([
         {
           type: 'confirm',
@@ -301,7 +303,9 @@ export async function initializeAgent(
 
       if (!shouldOverwrite) {
         console.log(chalk.blue('ℹ️  Keeping existing .env file unchanged'));
-        initializationSpinner.succeed(`Agent initialized successfully (kept existing .env)`);
+        initializationSpinner.succeed(
+          `Agent initialized successfully (kept existing .env)`,
+        );
         return;
       }
     }
