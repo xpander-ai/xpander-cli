@@ -4,9 +4,9 @@ import ora from 'ora';
 import ProgressStream from 'progress-stream';
 import { XpanderClient } from '../client';
 
-const BASE_URL = 'https://deployment-manager.xpander.ai';
-const BASE_URL_STG = 'https://deployment-manager.stg.xpander.ai';
-// const BASE_URL_STG = 'http://localhost:9015'; // dont remove, for local work.
+const BASE_URL = 'https://inbound.xpander.ai';
+const BASE_URL_STG = 'https://inbound.stg.xpander.ai';
+// const BASE_URL_STG = 'http://localhost:8085'; // dont remove, for local work.
 
 export const uploadAndDeploy = async (
   deploymentSpinner: ora.Ora,
@@ -22,7 +22,7 @@ export const uploadAndDeploy = async (
     // Step 1: Get upload URL
     deploymentSpinner.text = 'Requesting upload URL...';
 
-    const uploadLinkEndpoint = `${apiURL}/${client.orgId}/registry/agents/${agentId}/custom_workers/upload_link`;
+    const uploadLinkEndpoint = `${apiURL}/agent-containers/${agentId}/generate_upload_link`;
 
     const uploadLinkRes = await axios.get(uploadLinkEndpoint, {
       headers: {
@@ -74,7 +74,7 @@ export const uploadAndDeploy = async (
     }
 
     // Step 3: Apply uploaded worker
-    const applyEndpoint = `${apiURL}/${client.orgId}/registry/agents/${agentId}/custom_workers/apply`;
+    const applyEndpoint = `${apiURL}/agent-containers/${agentId}/deploy`;
 
     deploymentSpinner.text = 'Applying uploaded worker...';
 
@@ -120,7 +120,7 @@ export const restartDeployment = async (
   agentId: string,
 ): Promise<any> => {
   const apiURL = client.isStg ? BASE_URL_STG : BASE_URL;
-  const startEndpoint = `${apiURL}/${client.orgId}/registry/agents/${agentId}/custom_workers/start`;
+  const startEndpoint = `${apiURL}/agent-containers/${agentId}/start`;
 
   try {
     spinner.text = 'Restarting deployment...';
@@ -166,7 +166,7 @@ export const stopDeployment = async (
   agentId: string,
 ): Promise<any> => {
   const apiURL = client.isStg ? BASE_URL_STG : BASE_URL;
-  const stopEndpoint = `${apiURL}/${client.orgId}/registry/agents/${agentId}/custom_workers/stop`;
+  const stopEndpoint = `${apiURL}/agent-containers/${agentId}/stop`;
 
   try {
     spinner.text = 'Stopping deployment...';
