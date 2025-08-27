@@ -11,6 +11,7 @@ export function displayAgentTable(agents: any[]) {
       chalk.bold('ID'),
       chalk.bold('Name'),
       chalk.bold('Status'),
+      chalk.bold('Deploy'),
       chalk.bold('Model'),
       chalk.bold('Created'),
     ],
@@ -28,10 +29,16 @@ export function displayAgentTable(agents: any[]) {
       createdDate = agentEntry.created_at || '';
     }
 
+    // Format deployment type with icon
+    const deploymentType = agentEntry.deployment_type || 'serverless';
+    const deploymentIcon = deploymentType === 'container' ? '🐳' : '🚀';
+    const deploymentDisplay = `${deploymentIcon} ${deploymentType}`;
+
     table.push([
       chalk.dim(agentEntry.id),
       chalk.cyan(agentEntry.name),
       colorizeStatus(agentEntry.status),
+      chalk.magenta(deploymentDisplay),
       chalk.yellow(agentEntry.model_name || ''),
       createdDate,
     ]);

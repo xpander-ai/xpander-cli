@@ -4,6 +4,7 @@ import { Command } from 'commander';
 import inquirer from 'inquirer';
 import ora from 'ora';
 import { getAgentIdFromEnvOrSelection } from '../../../utils/agent-resolver';
+import { BillingErrorHandler } from '../../../utils/billing-error';
 import { createClient } from '../../../utils/client';
 import { getApiKey } from '../../../utils/config';
 
@@ -179,6 +180,14 @@ export function registerInvokeCommand(agentCmd: Command): void {
             invokeSpinner.fail('Failed to invoke agent');
           } else {
             spinner.fail('Failed to get agent details');
+          }
+
+          // Check for 429 billing error first
+          const isStaging = process?.env?.IS_STG === 'true';
+          if (
+            BillingErrorHandler.handleIfBillingError(webhookError, isStaging)
+          ) {
+            process.exit(1);
           }
 
           if (webhookError.response?.status === 404) {

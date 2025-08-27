@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import axios from 'axios';
 import chalk from 'chalk';
 import ora from 'ora';
+import { BillingErrorHandler } from '../../../utils/billing-error';
 import { XpanderClient } from '../../../utils/client';
 import { fileExists } from '../../../utils/custom-agents';
 
@@ -68,6 +69,12 @@ export async function syncSecrets(client: XpanderClient) {
     syncSpinner.succeed(`Secrets synced`);
   } catch (error: any) {
     syncSpinner.fail('Failed to sync secrets');
+
+    // Check for 429 billing error first
+    if (BillingErrorHandler.handleIfBillingError(error, client.isStg)) {
+      return;
+    }
+
     console.error(chalk.red('Error:'), error.message || String(error));
   }
 }

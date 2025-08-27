@@ -16,18 +16,73 @@ export async function createNewAgent(client: XpanderClient) {
   console.log(chalk.bold.blue('✨ Create New Agent'));
   console.log(chalk.dim('─'.repeat(60)));
 
-  const { agentName } = await inquirer.prompt([
+  const agentDetails = await inquirer.prompt([
     {
       type: 'input',
       name: 'agentName',
       message: 'Enter a name for your new agent:',
       validate: (input) => (input.trim() ? true : 'Name is required'),
     },
+    {
+      type: 'list',
+      name: 'deploymentType',
+      message: 'Select deployment type:',
+      choices: [
+        {
+          name: `🚀 Serverless ${chalk.dim('(recommended)')}\n   ${chalk.dim('Quick startup, auto-scaling, cost-effective for most use cases')}`,
+          value: 'serverless',
+          short: 'Serverless',
+        },
+        {
+          name: `🐳 Container\n   ${chalk.dim('Dedicated resources, better performance, consistent environment')}\n   ${chalk.dim('Docs: https://docs.xpander.ai/API%20reference/cli-reference#cloud-deployment-container-management')}`,
+          value: 'container',
+          short: 'Container',
+        },
+      ],
+      default: 'serverless',
+    },
   ]);
 
-  const createSpinner = ora(`Creating agent "${agentName}"...`).start();
+  // Display selected deployment type details
+  console.log('\n');
+  console.log(chalk.bold.green('✅ Selected Deployment Type'));
+  console.log(chalk.dim('─'.repeat(40)));
+
+  if (agentDetails.deploymentType === 'serverless') {
+    console.log(chalk.bold('🚀 Serverless'));
+    console.log(
+      chalk.dim('Your agent will run on shared infrastructure with:'),
+    );
+    console.log(chalk.dim('  • Quick startup and deployment'));
+    console.log(chalk.dim('  • Automatic scaling based on demand'));
+    console.log(chalk.dim('  • Cost-effective for most use cases'));
+  } else {
+    console.log(chalk.bold('🐳 Container'));
+    console.log(
+      chalk.dim('Your agent will run in a dedicated container with:'),
+    );
+    console.log(chalk.dim('  • Larger compute footprint'));
+    console.log(
+      chalk.dim('  • Better performance for resource-intensive tasks'),
+    );
+    console.log(chalk.dim('  • Consistent isolated environment'));
+    console.log('\n' + chalk.blue('📚 Learn more about container deployment:'));
+    console.log(
+      chalk.underline.blue(
+        'https://docs.xpander.ai/API%20reference/cli-reference#cloud-deployment-container-management',
+      ),
+    );
+  }
+  console.log('');
+
+  const createSpinner = ora(
+    `Creating agent "${agentDetails.agentName}"...`,
+  ).start();
   try {
-    const newAgent = await client.createAgent(agentName);
+    const newAgent = await client.createAgent(
+      agentDetails.agentName,
+      agentDetails.deploymentType,
+    );
 
     console.log(chalk.green('\n✅ Agent created and ready to use!'));
     createSpinner.stop();

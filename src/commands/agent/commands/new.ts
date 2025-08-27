@@ -23,6 +23,10 @@ export function registerNewCommand(agentCmd: Command): void {
     .description('Create a new agent with optional auto-initialization')
     .option('--name <name>', 'Name for the new agent')
     .option('--model <model>', 'Model to use (default: gpt-4o)')
+    .option(
+      '--deployment-type <type>',
+      'Deployment type: serverless or container',
+    )
     .option('--profile <name>', 'Profile to use')
     .option(
       '--framework <framework>',
@@ -36,13 +40,41 @@ export function registerNewCommand(agentCmd: Command): void {
     .option('--json', 'Output result in JSON format')
     .action(async (options) => {
       try {
-        let { name, profile, framework, folder, init } = options as {
-          name?: string;
-          profile?: string;
-          framework?: string;
-          folder?: string;
-          init?: boolean;
-        };
+        let { name, profile, framework, folder, init, deploymentType } =
+          options as {
+            name?: string;
+            profile?: string;
+            framework?: string;
+            folder?: string;
+            init?: boolean;
+            deploymentType?: string;
+          };
+
+        // Validate deployment type if provided
+        if (
+          deploymentType &&
+          !['serverless', 'container'].includes(deploymentType)
+        ) {
+          console.error(
+            chalk.red(
+              `❌ Invalid deployment type: ${deploymentType}. Available: serverless, container`,
+            ),
+          );
+          process.exit(1);
+        }
+
+        // Show read more link for container deployment if specified via command line
+        if (deploymentType === 'container' && !folder) {
+          console.log(
+            '\n' + chalk.blue('📚 Read more about container deployment:'),
+          );
+          console.log(
+            chalk.underline.blue(
+              'https://docs.xpander.ai/API%20reference/cli-reference#cloud-deployment-container-management',
+            ),
+          );
+          console.log('');
+        }
 
         const apiKey = getApiKey(profile);
         if (!apiKey) {
@@ -91,7 +123,9 @@ export function registerNewCommand(agentCmd: Command): void {
           }
         }
 
-        // If no name provided, prompt for it (unless in non-interactive mode)
+        // Handle name and deployment type prompts
+        const prompts = [];
+
         if (!name) {
           if (folder) {
             console.error(
@@ -99,20 +133,62 @@ export function registerNewCommand(agentCmd: Command): void {
             );
             process.exit(1);
           }
-          console.log(chalk.cyan('\nStep 2: Name your agent\n'));
-          const nameAnswer = await inquirer.prompt([
-            {
-              type: 'input',
-              name: 'agentName',
-              message: 'What name would you like for your agent?',
-              validate: (input) => {
-                if (!input.trim()) return 'Name is required';
-                return true;
-              },
+          prompts.push({
+            type: 'input',
+            name: 'agentName',
+            message: 'What name would you like for your agent?',
+            validate: (input: string) => {
+              if (!input.trim()) return 'Name is required';
+              return true;
             },
-          ]);
+          });
+        }
 
-          name = nameAnswer.agentName;
+        if (!deploymentType) {
+          if (folder) {
+            // Default to serverless for non-interactive mode if not specified
+            deploymentType = 'serverless';
+          } else {
+            prompts.push({
+              type: 'list',
+              name: 'deploymentType',
+              message: 'Select deployment type:',
+              choices: [
+                {
+                  name: `🚀 Serverless ${chalk.dim('(recommended)')}\n   ${chalk.dim('Quick startup, auto-scaling, cost-effective for most use cases')}`,
+                  value: 'serverless',
+                  short: 'Serverless',
+                },
+                {
+                  name: `🐳 Container\n   ${chalk.dim('Dedicated resources, better performance, consistent environment')}\n   ${chalk.dim('Docs: https://docs.xpander.ai/API%20reference/cli-reference#cloud-deployment-container-management')}`,
+                  value: 'container',
+                  short: 'Container',
+                },
+              ],
+              default: 'serverless',
+            });
+          }
+        }
+
+        if (prompts.length > 0 && !folder) {
+          console.log(chalk.cyan('\nStep 2: Configure your agent\n'));
+          const answers = await inquirer.prompt(prompts);
+
+          if (!name) name = answers.agentName;
+          if (!deploymentType) deploymentType = answers.deploymentType;
+
+          // Show read more link for container deployment
+          if (deploymentType === 'container') {
+            console.log(
+              '\n' + chalk.blue('📚 Read more about container deployment:'),
+            );
+            console.log(
+              chalk.underline.blue(
+                'https://docs.xpander.ai/API%20reference/cli-reference#cloud-deployment-container-management',
+              ),
+            );
+            console.log('');
+          }
         }
 
         // At this point, name should always be defined
@@ -129,7 +205,10 @@ export function registerNewCommand(agentCmd: Command): void {
           : { succeed: console.log, fail: console.error, stop: () => {} };
 
         const client = new XpanderClient(apiKey, undefined, profile);
-        let createdAgent = await client.createAgent(name);
+        let createdAgent = await client.createAgent(
+          name,
+          deploymentType as 'serverless' | 'container',
+        );
 
         // Update spinner on success
         spinner.succeed(chalk.green(`Agent "${name}" created successfully!`));

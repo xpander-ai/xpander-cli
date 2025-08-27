@@ -4,6 +4,7 @@ import {
   AgenticOperation,
   OperationSearchPayload,
 } from '../../../types/agent/operation';
+import { BillingErrorHandler } from '../../billing-error';
 
 export class OperationApi {
   constructor(
@@ -54,6 +55,12 @@ export class OperationApi {
       }));
     } catch (error: any) {
       if (axios.isAxiosError(error)) {
+        // Check for 429 billing error first
+        const isStaging = this.baseUrl.includes('stg');
+        if (BillingErrorHandler.handleIfBillingError(error, isStaging)) {
+          throw new Error('Billing limit reached');
+        }
+
         if (error.response?.status === 404) {
           console.log(
             chalk.yellow('Warning: No operations found for this interface'),

@@ -2,11 +2,12 @@ import fs from 'fs';
 import axios from 'axios';
 import ora from 'ora';
 import ProgressStream from 'progress-stream';
+import { BillingErrorHandler } from '../billing-error';
 import { XpanderClient } from '../client';
 
 const BASE_URL = 'https://inbound.xpander.ai';
-const BASE_URL_STG = 'https://inbound.stg.xpander.ai';
-// const BASE_URL_STG = 'http://localhost:8085'; // dont remove, for local work.
+// const BASE_URL_STG = 'https://inbound.stg.xpander.ai';
+const BASE_URL_STG = 'http://localhost:8085'; // dont remove, for local work.
 
 export const uploadAndDeploy = async (
   deploymentSpinner: ora.Ora,
@@ -94,6 +95,11 @@ export const uploadAndDeploy = async (
     deploymentSpinner.fail('❌ Upload failed');
 
     if (axios.isAxiosError(err)) {
+      // Check for 429 billing error first
+      if (BillingErrorHandler.handleIfBillingError(err, client.isStg)) {
+        throw new Error('Billing limit reached');
+      }
+
       console.error('❌ Axios error:', {
         message: err.message,
         code: err.code,
@@ -141,6 +147,11 @@ export const restartDeployment = async (
     spinner.fail('❌ Restart failed');
 
     if (axios.isAxiosError(err)) {
+      // Check for 429 billing error first
+      if (BillingErrorHandler.handleIfBillingError(err, client.isStg)) {
+        throw new Error('Billing limit reached');
+      }
+
       console.error('❌ Axios error:', {
         message: err.message,
         code: err.code,
@@ -183,6 +194,11 @@ export const stopDeployment = async (
     spinner.fail('❌ Stop failed');
 
     if (axios.isAxiosError(err)) {
+      // Check for 429 billing error first
+      if (BillingErrorHandler.handleIfBillingError(err, client.isStg)) {
+        throw new Error('Billing limit reached');
+      }
+
       console.error('❌ Axios error:', {
         message: err.message,
         code: err.code,
