@@ -6,8 +6,8 @@ import { BillingErrorHandler } from '../billing-error';
 import { XpanderClient } from '../client';
 
 const BASE_URL = 'https://inbound.xpander.ai';
-// const BASE_URL_STG = 'https://inbound.stg.xpander.ai';
-const BASE_URL_STG = 'http://localhost:8085'; // dont remove, for local work.
+const BASE_URL_STG = 'https://inbound.stg.xpander.ai';
+// const BASE_URL_STG = 'http://localhost:8085'; // dont remove, for local work.
 
 export const uploadAndDeploy = async (
   deploymentSpinner: ora.Ora,
@@ -63,6 +63,7 @@ export const uploadAndDeploy = async (
       headers: {
         'Content-Type': 'application/gzip',
         'Content-Length': fileSize,
+        'x-api-key': client.apiKey,
       },
       maxBodyLength: Infinity,
       maxContentLength: Infinity,
