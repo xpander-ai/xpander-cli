@@ -252,7 +252,8 @@ export class XpanderClient {
   async getAgentWebhookDetails(agentId: string): Promise<any> {
     try {
       // Use absolute URL to make sure we're hitting the right endpoint
-      const webhookUrl = `https://inbound.xpander.ai/agents/${agentId}`;
+      const isStaging = process?.env?.IS_STG === 'true';
+      const webhookUrl = `https://inbound.${isStaging ? 'stg.' : ''}xpander.ai/agents/${agentId}`;
       const response = await axios.get(webhookUrl, {
         headers: {
           'x-api-key': this.apiKey,
