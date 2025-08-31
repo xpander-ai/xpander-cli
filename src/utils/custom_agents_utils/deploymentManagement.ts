@@ -7,7 +7,8 @@ import { XpanderClient } from '../client';
 
 const BASE_URL = 'https://inbound.xpander.ai';
 const BASE_URL_STG = 'https://inbound.stg.xpander.ai';
-// const BASE_URL_STG = 'http://localhost:8085'; // dont remove, for local work.
+// const BASE_URL_STG =
+// 'http://agent-controller.xpander-2025-08-21.local.dev/d583d2f2-f4dd-47b8-983c-9203a6f8634a'; // dont remove, for local work.
 
 export const uploadAndDeploy = async (
   deploymentSpinner: ora.Ora,
