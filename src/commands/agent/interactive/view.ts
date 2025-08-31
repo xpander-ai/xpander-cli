@@ -52,6 +52,16 @@ export async function viewAgentDetails(client: XpanderClient, agents: any[]) {
       `${chalk.bold('Tools:')}     ${agentDetails.tools?.length || 0}`,
     );
 
+    // Display deployment type with link to documentation
+    const deploymentType = agentDetails.deployment_type || 'serverless';
+    const deploymentIcon = deploymentType === 'container' ? '🐳' : '🚀';
+    console.log(
+      `${chalk.bold('Deployment:')} ${deploymentIcon} ${chalk.cyan(deploymentType)}`,
+    );
+    console.log(
+      `${chalk.bold('Docs:')}       ${chalk.blue('https://docs.xpander.ai/API%20reference/cli-reference#cloud-deployment-container-management')}`,
+    );
+
     if ('icon' in agentDetails && agentDetails.icon) {
       console.log(`${chalk.bold('Icon:')}      ${agentDetails.icon}`);
     }

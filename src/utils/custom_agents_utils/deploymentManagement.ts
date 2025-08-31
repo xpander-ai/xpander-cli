@@ -2,11 +2,13 @@ import fs from 'fs';
 import axios from 'axios';
 import ora from 'ora';
 import ProgressStream from 'progress-stream';
+import { BillingErrorHandler } from '../billing-error';
 import { XpanderClient } from '../client';
 
-const BASE_URL = 'https://deployment-manager.xpander.ai';
-const BASE_URL_STG = 'https://deployment-manager.stg.xpander.ai';
-// const BASE_URL_STG = 'http://localhost:9015'; // dont remove, for local work.
+const BASE_URL = 'https://inbound.xpander.ai';
+const BASE_URL_STG = 'https://inbound.stg.xpander.ai';
+// const BASE_URL_STG =
+// 'http://agent-controller.xpander-2025-08-21.local.dev/d583d2f2-f4dd-47b8-983c-9203a6f8634a'; // dont remove, for local work.
 
 export const uploadAndDeploy = async (
   deploymentSpinner: ora.Ora,
@@ -22,7 +24,7 @@ export const uploadAndDeploy = async (
     // Step 1: Get upload URL
     deploymentSpinner.text = 'Requesting upload URL...';
 
-    const uploadLinkEndpoint = `${apiURL}/${client.orgId}/registry/agents/${agentId}/custom_workers/upload_link`;
+    const uploadLinkEndpoint = `${apiURL}/agent-containers/${agentId}/generate_upload_link`;
 
     const uploadLinkRes = await axios.get(uploadLinkEndpoint, {
       headers: {
@@ -62,6 +64,7 @@ export const uploadAndDeploy = async (
       headers: {
         'Content-Type': 'application/gzip',
         'Content-Length': fileSize,
+        'x-api-key': client.apiKey,
       },
       maxBodyLength: Infinity,
       maxContentLength: Infinity,
@@ -74,7 +77,7 @@ export const uploadAndDeploy = async (
     }
 
     // Step 3: Apply uploaded worker
-    const applyEndpoint = `${apiURL}/${client.orgId}/registry/agents/${agentId}/custom_workers/apply`;
+    const applyEndpoint = `${apiURL}/agent-containers/${agentId}/deploy`;
 
     deploymentSpinner.text = 'Applying uploaded worker...';
 
@@ -94,6 +97,11 @@ export const uploadAndDeploy = async (
     deploymentSpinner.fail('❌ Upload failed');
 
     if (axios.isAxiosError(err)) {
+      // Check for 429 billing error first
+      if (BillingErrorHandler.handleIfBillingError(err, client.isStg)) {
+        throw new Error('Billing limit reached');
+      }
+
       console.error('❌ Axios error:', {
         message: err.message,
         code: err.code,
@@ -120,7 +128,7 @@ export const restartDeployment = async (
   agentId: string,
 ): Promise<any> => {
   const apiURL = client.isStg ? BASE_URL_STG : BASE_URL;
-  const startEndpoint = `${apiURL}/${client.orgId}/registry/agents/${agentId}/custom_workers/start`;
+  const startEndpoint = `${apiURL}/agent-containers/${agentId}/start`;
 
   try {
     spinner.text = 'Restarting deployment...';
@@ -141,6 +149,11 @@ export const restartDeployment = async (
     spinner.fail('❌ Restart failed');
 
     if (axios.isAxiosError(err)) {
+      // Check for 429 billing error first
+      if (BillingErrorHandler.handleIfBillingError(err, client.isStg)) {
+        throw new Error('Billing limit reached');
+      }
+
       console.error('❌ Axios error:', {
         message: err.message,
         code: err.code,
@@ -166,7 +179,7 @@ export const stopDeployment = async (
   agentId: string,
 ): Promise<any> => {
   const apiURL = client.isStg ? BASE_URL_STG : BASE_URL;
-  const stopEndpoint = `${apiURL}/${client.orgId}/registry/agents/${agentId}/custom_workers/stop`;
+  const stopEndpoint = `${apiURL}/agent-containers/${agentId}/stop`;
 
   try {
     spinner.text = 'Stopping deployment...';
@@ -183,6 +196,11 @@ export const stopDeployment = async (
     spinner.fail('❌ Stop failed');
 
     if (axios.isAxiosError(err)) {
+      // Check for 429 billing error first
+      if (BillingErrorHandler.handleIfBillingError(err, client.isStg)) {
+        throw new Error('Billing limit reached');
+      }
+
       console.error('❌ Axios error:', {
         message: err.message,
         code: err.code,

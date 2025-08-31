@@ -1,6 +1,11 @@
 /**
  * Represents an agent in the Xpander.ai system
  */
+/**
+ * Deployment type options for agents
+ */
+export type DeploymentType = 'serverless' | 'container';
+
 export interface Agent {
   id: string;
   name: string;
@@ -14,6 +19,7 @@ export interface Agent {
   version?: number;
   config?: any;
   icon?: string; // Icon (emoji) for the agent
+  deployment_type?: DeploymentType; // Deployment type: serverless or container
   instructions?: {
     role?: string;
     goal?: string;

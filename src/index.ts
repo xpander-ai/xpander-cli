@@ -24,6 +24,7 @@ import { configureStopCommand } from './commands/stop';
 import { allCommands } from './types';
 import { displayBanner, displayCustomHelp } from './utils/banner';
 import { getApiKey, setPreferredFormat, listProfiles } from './utils/config';
+import { checkForUpdates } from './utils/version-check';
 export * from './types';
 
 // Read the version from package.json instead of hardcoding it
@@ -127,6 +128,13 @@ async function main(): Promise<void> {
   const isInvokeCommand = process.argv.includes('invoke');
   if (!isSettingDefaultProfile && !isInvokeCommand) {
     await displayBanner();
+  }
+
+  // Check for version updates
+  try {
+    await checkForUpdates(version);
+  } catch (error) {
+    // Silently ignore version check errors to avoid disrupting CLI functionality
   }
 
   // Check if they're running a command or just showing help

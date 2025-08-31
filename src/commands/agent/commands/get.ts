@@ -70,6 +70,14 @@ export function registerGetCommand(agentCmd: Command): void {
         console.log(`Tools:    ${agentDetails.tools?.length || 0}`);
         console.log(`Icon:     ${agentDetails.icon || '🤖'}`);
 
+        // Display deployment type with documentation link
+        const deploymentType = agentDetails.deployment_type || 'serverless';
+        const deploymentIcon = deploymentType === 'container' ? '🐳' : '🚀';
+        console.log(`Deploy:   ${deploymentIcon} ${deploymentType}`);
+        console.log(
+          `Docs:     ${chalk.blue('https://docs.xpander.ai/API%20reference/cli-reference#cloud-deployment-container-management')}`,
+        );
+
         // Format date nicely
         const created = new Date(agentDetails.created_at);
         console.log(`Created:  ${created.toLocaleDateString()}`);

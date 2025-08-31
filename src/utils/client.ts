@@ -3,6 +3,7 @@ import chalk from 'chalk';
 import { getApiKey, getOrganizationId, setOrganizationId } from './config';
 import { Agent, GraphConnection, GraphNode } from '../types';
 import { OperationApi } from './api/agent/operation';
+import { BillingErrorHandler } from './billing-error';
 
 const API_BASE_URL = 'https://inbound.xpander.ai';
 const API_BASE_URL_STG = 'https://inbound.stg.xpander.ai';
@@ -86,6 +87,11 @@ export class XpanderClient {
         return response;
       },
       (error: any) => {
+        // Handle 429 billing errors first
+        if (BillingErrorHandler.handleIfBillingError(error, this.isStg)) {
+          return Promise.reject(new Error('Billing limit reached'));
+        }
+
         if (error.response) {
           const { status, data } = error.response;
 
@@ -246,7 +252,8 @@ export class XpanderClient {
   async getAgentWebhookDetails(agentId: string): Promise<any> {
     try {
       // Use absolute URL to make sure we're hitting the right endpoint
-      const webhookUrl = `https://inbound.xpander.ai/agents/${agentId}`;
+      const isStaging = process?.env?.IS_STG === 'true';
+      const webhookUrl = `https://inbound.${isStaging ? 'stg.' : ''}xpander.ai/agents/${agentId}`;
       const response = await axios.get(webhookUrl, {
         headers: {
           'x-api-key': this.apiKey,
@@ -256,6 +263,11 @@ export class XpanderClient {
 
       return response.data;
     } catch (error: any) {
+      // Check for 429 billing error first
+      if (BillingErrorHandler.handleIfBillingError(error, this.isStg)) {
+        throw new Error('Billing limit reached');
+      }
+
       console.error(
         chalk.red('Error fetching agent webhook details:'),
         error.response?.status || 'Network error',
@@ -268,7 +280,10 @@ export class XpanderClient {
   /**
    * Creates a new agent
    */
-  async createAgent(name: string): Promise<Agent> {
+  async createAgent(
+    name: string,
+    deployment_type?: 'serverless' | 'container',
+  ): Promise<Agent> {
     try {
       if (this.orgId) {
         // Reduce verbosity - use more subtle indication
@@ -282,6 +297,7 @@ export class XpanderClient {
       // Prepare request payload
       const payload = {
         name,
+        ...(deployment_type ? { deployment_type } : {}),
         ...(this.orgId ? { organization_id: this.orgId } : {}),
       };
 
@@ -298,6 +314,11 @@ export class XpanderClient {
       const response = await axios(config);
       return response.data;
     } catch (error: any) {
+      // Check for 429 billing error first
+      if (BillingErrorHandler.handleIfBillingError(error, this.isStg)) {
+        throw new Error('Billing limit reached');
+      }
+
       console.error(chalk.red('\n❌ Failed to create agent:'));
       if (error.response) {
         console.error(chalk.red(`Error code: ${error.response.status}`));
@@ -346,6 +367,11 @@ export class XpanderClient {
       await axios(config);
       return true;
     } catch (error: any) {
+      // Check for 429 billing error first
+      if (BillingErrorHandler.handleIfBillingError(error, this.isStg)) {
+        throw new Error('Billing limit reached');
+      }
+
       if (error.response) {
         console.error(chalk.red(`Status: ${error.response.status}`));
         console.error(
@@ -742,6 +768,11 @@ export class XpanderClient {
       await axios(config);
       return true;
     } catch (error: any) {
+      // Check for 429 billing error first
+      if (BillingErrorHandler.handleIfBillingError(error, this.isStg)) {
+        throw new Error('Billing limit reached');
+      }
+
       if (error.response) {
         console.error(
           chalk.red(
