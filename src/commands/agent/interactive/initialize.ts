@@ -281,7 +281,9 @@ export async function initializeAgent(
           !existingValue ||
           existingValue.trim() === '' ||
           existingValue.includes('your-') ||
-          existingValue.includes('placeholder')
+          existingValue.includes('placeholder') ||
+          existingValue.includes('{') ||
+          existingValue.includes('}')
         ) {
           return `${key}=${envVars[key.trim()]}`;
         }
