@@ -4,9 +4,9 @@ import { request } from 'undici';
 import { XpanderClient } from '../client';
 
 /** Deployment-manager origins */
-const BASE_URL = 'https://deployment-manager.xpander.ai';
-const BASE_URL_STG = 'https://deployment-manager.stg.xpander.ai';
-// const BASE_URL_STG = 'http://localhost:9015'; // dont remove, for local work.
+const BASE_URL = 'https://agent-controller.xpander.ai';
+const BASE_URL_STG = 'https://agent-controller.stg.xpander.ai';
+// const BASE_URL_STG = 'http://localhost:9016'; // dont remove, for local work.
 
 /**
  * Stream **live** logs from a custom-worker via Server-Sent Events.
@@ -21,7 +21,7 @@ export async function streamLogs(
   agentId: string,
 ): Promise<void> {
   const root = client.isStg ? BASE_URL_STG : BASE_URL;
-  const url = `${root}/${client.orgId}/registry/agents/${agentId}/custom_workers/logs`;
+  const url = `${root}/${client.orgId}/agent-containers/${agentId}/logs`;
 
   spinner.text = 'Waiting for logs…';
 
