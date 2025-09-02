@@ -100,6 +100,12 @@ export const buildAndSaveDockerImage = async (
     resolvedContext,
   ]);
 
+  // Test the image locally before proceeding with export
+  const testPassed = await testDockerImage(deploymentSpinner, imageName, 10);
+  if (!testPassed) {
+    return;
+  }
+
   deploymentSpinner.text = 'Exporting your AI Agent files';
   await runCommandWithLogs('docker', ['save', '-o', tarPath, fullImageName]);
 
@@ -117,4 +123,80 @@ export const buildAndSaveDockerImage = async (
   }
 
   return compressedPath;
+};
+
+/**
+ * Tests a Docker image by running it and checking logs for required messages.
+ *
+ * @param deploymentSpinner - Spinner instance for status updates
+ * @param imageName - Name of the Docker image to test
+ * @param timeoutSeconds - How long to wait for the container (default: 10)
+ * @returns Promise<boolean> - true if test passes, false otherwise
+ */
+export const testDockerImage = async (
+  deploymentSpinner: ora.Ora,
+  imageName: string,
+  timeoutSeconds: number = 10,
+): Promise<boolean> => {
+  // Safety checks
+  if (!(await ensureDockerInstalled(deploymentSpinner))) return false;
+  if (!(await ensureDockerRunning(deploymentSpinner))) return false;
+
+  const fullImageName = `${imageName}:latest`;
+  const containerName = `test_${imageName.replace(/[/:]/g, '_')}_${randomUUID().substring(0, 8)}`;
+
+  try {
+    deploymentSpinner.text = 'Testing the container locally...';
+
+    // Start the container in detached mode
+    await execAsync(`docker run -d --name ${containerName} ${fullImageName}`);
+
+    // Wait for the specified timeout while keeping the same spinner text
+    await new Promise((resolve) => setTimeout(resolve, timeoutSeconds * 1000));
+
+    // Get container logs (both stdout and stderr)
+    const { stdout: allLogs } = await execAsync(
+      `docker logs ${containerName} 2>&1`,
+    );
+
+    // Check for required log messages (case insensitive)
+    const logsLower = allLogs.toLowerCase();
+    const hasWorkerRegistered = logsLower.includes('worker registered');
+    const hasXpanderAgents = logsLower.includes('xpander.ai/agents');
+
+    if (!hasWorkerRegistered || !hasXpanderAgents) {
+      deploymentSpinner.fail(
+        `Local image test failed:\n` +
+          `\n--- Container Logs ---\n${allLogs || '(no logs captured)'}`,
+      );
+      return false;
+    }
+
+    // Don't stop the spinner - let the build process continue
+    return true;
+  } catch (error: any) {
+    // Get logs even if there was an error
+    let containerLogs = '';
+    try {
+      const { stdout } = await execAsync(`docker logs ${containerName} 2>&1`);
+      containerLogs = stdout;
+    } catch {
+      // If we can't get logs, that's okay
+    }
+
+    const logSection = containerLogs
+      ? `\n\n--- Container Logs ---\n${containerLogs}`
+      : '';
+    deploymentSpinner.fail(
+      `Local image test failed: ${error.message}${logSection}`,
+    );
+    return false;
+  } finally {
+    // Clean up the test container
+    try {
+      await execAsync(`docker rm -f ${containerName}`);
+    } catch {
+      // Ignore cleanup errors
+    }
+  }
 };
