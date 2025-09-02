@@ -37,15 +37,28 @@ export async function streamLogs(
     headersTimeout: 0,
   });
 
+  let firstLogReceived = false;
+
   /* Parse the stream, line-by-line */
   const parser = createParser({
     /** Every line emitted by the server arrives here */
     onEvent(evt: any) {
-      if (!!evt?.data) process.stdout.write(`${evt.data}\n`);
+      if (!!evt?.data) {
+        // Stop spinner and clear the waiting message when first log arrives
+        if (!firstLogReceived) {
+          spinner.stop();
+          firstLogReceived = true;
+        }
+        process.stdout.write(`${evt.data}\n`);
+      }
     },
     /** Optional: handle server-requested retry delays */
     onRetry(delay: number) {
-      spinner.info(`server requested reconnect in ${delay} ms`);
+      if (!firstLogReceived) {
+        spinner.info(`server requested reconnect in ${delay} ms`);
+      } else {
+        console.log(`server requested reconnect in ${delay} ms`);
+      }
     },
   });
 
