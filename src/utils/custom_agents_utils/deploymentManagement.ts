@@ -4,6 +4,7 @@ import ora from 'ora';
 import ProgressStream from 'progress-stream';
 import { BillingErrorHandler } from '../billing-error';
 import { XpanderClient } from '../client';
+import { syncNeMoConfigFile } from '../nemo';
 
 const BASE_URL = 'https://inbound.xpander.ai';
 const BASE_URL_STG = 'https://inbound.stg.xpander.ai';
@@ -14,13 +15,22 @@ export const uploadAndDeploy = async (
   client: XpanderClient,
   agentId: string,
   imagePath: string,
+  currentDirectory: string,
 ): Promise<any> => {
   const apiURL = client.isStg ? BASE_URL_STG : BASE_URL;
   const fileSize = fs.statSync(imagePath).size;
   const fileStream = fs.createReadStream(imagePath);
 
   try {
-    // Step 1: Get upload URL
+    // Step 1: Sync NeMo llm config to xpander cloud
+    await syncNeMoConfigFile(
+      agentId,
+      client,
+      currentDirectory,
+      deploymentSpinner,
+    );
+
+    // Step 2: Get upload URL
     deploymentSpinner.text = 'Requesting upload URL...';
 
     const uploadLinkEndpoint = `${apiURL}/agent-containers/${agentId}/generate_upload_link`;
@@ -40,7 +50,7 @@ export const uploadAndDeploy = async (
       throw new Error('No upload URL received from server.');
     }
 
-    // Step 2: Upload to xpander.ai
+    // Step 3: Upload to xpander.ai
     deploymentSpinner.text = 'Uploading to xpander.ai...';
 
     const progressStream = ProgressStream({
@@ -75,7 +85,7 @@ export const uploadAndDeploy = async (
       throw new Error(`xpander.ai upload failed: ${uploadRes.status}`);
     }
 
-    // Step 3: Apply uploaded worker
+    // Step 4: Apply uploaded worker
     const applyEndpoint = `${apiURL}/agent-containers/${agentId}/deploy`;
 
     deploymentSpinner.text = 'Applying uploaded worker...';

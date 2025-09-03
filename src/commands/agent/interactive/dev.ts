@@ -3,8 +3,10 @@ import { existsSync } from 'fs';
 import { join } from 'path';
 import chalk from 'chalk';
 import ora from 'ora';
+import { createClient } from '../../../utils/client';
 import { ensureAgentIsInitialized } from '../../../utils/custom-agents';
 import { getXpanderConfigFromEnvFile } from '../../../utils/custom_agents_utils/generic';
+import { syncNeMoConfigFile } from '../../../utils/nemo';
 
 async function findPythonExecutable(): Promise<string> {
   const venv = process.env.VIRTUAL_ENV;
@@ -61,6 +63,9 @@ export async function startAgent(providedAgentId?: string) {
       );
       return;
     }
+
+    const client = createClient();
+    await syncNeMoConfigFile(agentId, client, currentDirectory, devModeSpinner);
 
     devModeSpinner.text = `Starting agent ${agentId}`;
 

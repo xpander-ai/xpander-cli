@@ -7,6 +7,7 @@ import { BillingErrorHandler } from './billing-error';
 
 const API_BASE_URL = 'https://inbound.xpander.ai';
 const API_BASE_URL_STG = 'https://inbound.stg.xpander.ai';
+// const API_BASE_URL_STG = 'http://localhost:8085';
 
 /**
  * Client for interacting with the Xpander API
@@ -394,6 +395,7 @@ export class XpanderClient {
   async updateAgent(
     agentId: string,
     data: Partial<Agent>,
+    silent?: boolean,
   ): Promise<Agent | null> {
     try {
       // First, verify that the agent exists before attempting update
@@ -409,7 +411,9 @@ export class XpanderClient {
 
       if (this.orgId) {
         // Make this log subtle
-        console.log(chalk.dim(`Updating agent details...`));
+        if (!silent) {
+          console.log(chalk.dim(`Updating agent details...`));
+        }
       }
 
       // Format for the update endpoint
@@ -424,7 +428,9 @@ export class XpanderClient {
       };
 
       // Reduce payload logging to be less verbose
-      console.log(chalk.dim('Sending update request...'));
+      if (!silent) {
+        console.log(chalk.dim('Sending update request...'));
+      }
 
       const config = {
         method: 'PATCH',
@@ -740,12 +746,14 @@ export class XpanderClient {
   /**
    * Deploys an agent
    */
-  async deployAgent(agentId: string): Promise<boolean> {
+  async deployAgent(agentId: string, silent?: boolean): Promise<boolean> {
     try {
       if (this.orgId) {
-        console.log(
-          chalk.dim(`Deploying agent in organization: ${this.orgId}...`),
-        );
+        if (!silent) {
+          console.log(
+            chalk.dim(`Deploying agent in organization: ${this.orgId}...`),
+          );
+        }
       }
       const url = '/agents-crud/tools/crud/deploy';
 
