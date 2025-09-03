@@ -19,22 +19,30 @@ export const waitForAuthCallback = async (): Promise<AuthResult> => {
     const timeout = setTimeout(() => {
       if (!resolved) {
         resolved = true;
-        server.close();
+        setTimeout(server.close, 3000);
         reject(new Error('Authentication timeout - please try again'));
       }
     }, 300000); // 5 minutes
 
     const cleanup = () => {
       clearTimeout(timeout);
-      if (typeof (server as any).closeAllConnections === 'function') {
-        (server as any).closeAllConnections();
-      }
-      server.close();
+
+      setTimeout(() => {
+        if (typeof (server as any).closeAllConnections === 'function') {
+          (server as any).closeAllConnections();
+        }
+        server.close();
+      }, 3000);
     };
 
     app.get('/auth-callback', (req: Request, res: Response) => {
+      const redirectToSuccess = () => {
+        const appUrl = isStg ? APP_URL_STG : APP_URL;
+
+        res.redirect(`${appUrl}/auth-completed`);
+      };
       if (resolved) {
-        res.status(403).send('Authentication flow already completed');
+        redirectToSuccess();
         return;
       }
 
@@ -49,16 +57,16 @@ export const waitForAuthCallback = async (): Promise<AuthResult> => {
         reject(new Error('Missing required parameters in callback'));
         return;
       }
-
-      const appUrl = isStg ? APP_URL_STG : APP_URL;
-
-      res.redirect(`${appUrl}/auth-completed`);
+      redirectToSuccess();
 
       res.on('finish', () => {
         if (!resolved) {
           resolved = true;
           cleanup();
-          resolve({ apiKey, organizationId, firstName });
+          setTimeout(
+            () => resolve({ apiKey, organizationId, firstName }),
+            1000,
+          );
         }
       });
     });

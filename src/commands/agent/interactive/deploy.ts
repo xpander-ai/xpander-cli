@@ -91,6 +91,7 @@ export async function deployAgent(
       client,
       agent.id,
       imagePath,
+      currentDirectory,
     );
 
     if (!result) {

@@ -9,6 +9,7 @@ import inquirer from 'inquirer';
 import ora from 'ora';
 import { XpanderClient } from './client';
 import { fileExists, pathIsEmpty } from './custom-agents';
+import { createNeMoConfigFile } from './nemo';
 import { AGENT_TEMPLATES, AgentTemplate } from '../types/templates';
 
 const execAsync = promisify(exec);
@@ -284,6 +285,9 @@ export async function initializeAgentWithTemplate(
       agentId,
       nonInteractive,
     );
+
+    // add NeMo config
+    await createNeMoConfigFile(agent, currentDirectory);
 
     initializationSpinner.succeed(
       `Agent initialized successfully with ${template.name} template`,

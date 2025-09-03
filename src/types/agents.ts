@@ -33,8 +33,8 @@ export interface Agent {
   enriched_prompts?: string[];
   tools?: any[];
   type?: string;
-  model_name?: string;
-  model_provider?: string;
+  model_name: string;
+  model_provider: string;
   is_ai_employee?: boolean;
   deletable?: boolean;
   // Other properties that might be needed

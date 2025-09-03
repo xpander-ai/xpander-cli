@@ -63,6 +63,7 @@ const project = new typescript.TypeScriptProject({
     'open',
     'undici',
     'eventsource-parser',
+    'js-yaml',
   ],
 
   // Development dependencies
@@ -73,6 +74,7 @@ const project = new typescript.TypeScriptProject({
     '@types/yargs',
     '@types/express',
     '@types/open',
+    '@types/js-yaml',
     'esbuild',
     'ts-node',
     '@types/progress-stream',

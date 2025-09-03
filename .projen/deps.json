@@ -17,6 +17,10 @@
       "type": "build"
     },
     {
+      "name": "@types/js-yaml",
+      "type": "build"
+    },
+    {
       "name": "@types/node",
       "type": "build"
     },
@@ -152,6 +156,10 @@
     {
       "name": "inquirer",
       "version": "^8.2.5",
+      "type": "runtime"
+    },
+    {
+      "name": "js-yaml",
       "type": "runtime"
     },
     {
