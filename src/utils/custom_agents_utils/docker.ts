@@ -93,6 +93,7 @@ export const buildAndSaveDockerImage = async (
 
   deploymentSpinner.text = 'Building your AI Agent';
   await runCommandWithLogs('docker', [
+    'buildx',
     'build',
     '--platform=linux/amd64,linux/arm64',
     '-t',
