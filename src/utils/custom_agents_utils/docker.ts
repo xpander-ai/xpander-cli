@@ -150,7 +150,9 @@ export const testDockerImage = async (
     deploymentSpinner.text = 'Testing the container locally...';
 
     // Start the container in detached mode
-    await execAsync(`docker run -d --name ${containerName} ${fullImageName}`);
+    await execAsync(
+      `docker run -d --name ${containerName} ${fullImageName} --platform=linux/amd64`,
+    );
 
     // Wait for the specified timeout while keeping the same spinner text
     await new Promise((resolve) => setTimeout(resolve, timeoutSeconds * 1000));
