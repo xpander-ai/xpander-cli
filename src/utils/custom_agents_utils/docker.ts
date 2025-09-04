@@ -151,7 +151,7 @@ export const testDockerImage = async (
 
     // Start the container in detached mode
     await execAsync(
-      `docker run -d --name ${containerName} ${fullImageName} --platform=linux/amd64`,
+      `docker run -d --platform=linux/amd64 --name ${containerName} ${fullImageName}`,
     );
 
     // Wait for the specified timeout while keeping the same spinner text
