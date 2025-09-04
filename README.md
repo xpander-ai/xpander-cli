@@ -1,4 +1,4 @@
-[![Version](https://img.shields.io/npm/v/@xpander-ai/cli.svg)](https://www.npmjs.com/package/@xpander-ai/cli)
+[![Version](https://img.shields.io/npm/v/xpander-cli.svg)](https://www.npmjs.com/package/xpander-cli)
 [![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](https://github.com/xpander-ai/xpander-cli/blob/main/LICENSE)
 [![Node.js](https://img.shields.io/badge/node-16.x%20%7C%2018.x%20%7C%2020.x-brightgreen.svg)](https://nodejs.org/)
 
@@ -43,7 +43,7 @@
 
 ```bash
 # Install the CLI
-npm install -g @xpander-ai/cli
+npm install -g xpander-cli
 
 # Configure with your API key
 xpander configure
@@ -66,13 +66,13 @@ xpander agent tools --id YOUR_AGENT_ID
 You can install the Xpander CLI via npm:
 
 ```bash
-npm install -g @xpander-ai/cli
+npm install -g xpander-cli
 ```
 
 Or using Yarn:
 
 ```bash
-yarn global add @xpander-ai/cli
+yarn global add xpander-cli
 ```
 
 After installation, you can use the `xpander` command from anywhere.

@@ -77,10 +77,10 @@ function setCachedVersion(latestVersion: string): void {
  */
 async function fetchLatestVersion(): Promise<string | null> {
   try {
-    // Try the scoped package first (@xpander-ai/cli)
+    // Try the scoped package first (xpander-cli)
     let response;
     try {
-      response = await axios.get('https://registry.npmjs.org/@xpander-ai/cli', {
+      response = await axios.get('https://registry.npmjs.org/xpander-cli', {
         timeout: 5000, // 5 second timeout
       });
     } catch (scopedError) {
@@ -153,7 +153,7 @@ ${chalk.gray(`Current: ${currentVersion}`)}
 ${chalk.green(`Latest:  ${latestVersion}`)}
 
 Run the following command to update:
-${chalk.cyan('npm install -g @xpander-ai/cli')}`;
+${chalk.cyan('npm install -g xpander-cli')}`;
 
   console.log(
     boxen(updateMessage, {
