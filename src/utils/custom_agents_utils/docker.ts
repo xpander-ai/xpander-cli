@@ -95,6 +95,7 @@ export const buildAndSaveDockerImage = async (
   await runCommandWithLogs('docker', [
     'build',
     '--platform=linux/amd64',
+    '--load',
     '-t',
     fullImageName,
     resolvedContext,
