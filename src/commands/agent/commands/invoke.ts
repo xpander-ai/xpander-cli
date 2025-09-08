@@ -1,3 +1,4 @@
+import { spawn } from 'child_process';
 import axios from 'axios';
 import chalk from 'chalk';
 import { Command } from 'commander';
@@ -7,6 +8,10 @@ import { getAgentIdFromEnvOrSelection } from '../../../utils/agent-resolver';
 import { BillingErrorHandler } from '../../../utils/billing-error';
 import { createClient } from '../../../utils/client';
 import { getApiKey } from '../../../utils/config';
+import {
+  canUseLocalHandler,
+  getPythonCommand,
+} from '../../../utils/local-handler';
 
 /**
  * Register invoke command for agents
@@ -15,6 +20,15 @@ export function registerInvokeCommand(agentCmd: Command): void {
   agentCmd
     .command('invoke [agent] [message...]')
     .description('Invoke agent with a message and return the result')
+    .addHelpText(
+      'after',
+      `
+Examples:
+  $ xpander agent invoke                          # Interactive: select agent and enter message
+  $ xpander agent invoke "MyAgent"                # Select agent, then prompt for message
+  $ xpander agent invoke "MyAgent" "Hello world"  # Direct invocation
+  $ xpander agent invoke --json MyAgent "task"    # Get JSON response`,
+    )
     .option('--agent <agent>', 'Agent name or ID to invoke')
     .option('--agent-id <agent_id>', 'Agent ID to invoke')
     .option('--agent-name <agent_name>', 'Agent name to invoke')
@@ -58,37 +72,56 @@ export function registerInvokeCommand(agentCmd: Command): void {
             : (messageArgs || '').trim();
         }
 
-        // If no message and no agent, we'll handle this after agent selection
-        // If we have an agent but no message, that's an error
-        if (!message && agentInput) {
-          console.error(chalk.red('❌ Message is required'));
-          console.log(
-            chalk.yellow('Usage: xpander agent invoke [agent] "message"'),
+        // Handle different invocation patterns:
+        // 1. xpander agent invoke -> interactive agent selection + prompt for message
+        // 2. xpander agent invoke "agent" -> resolve agent + prompt for message
+        // 3. xpander agent invoke "agent" "message" -> resolve agent + use message
+
+        let agentId: string | null = null;
+        let useSilentMode = false;
+
+        if (agentInput) {
+          // Agent provided - resolve it
+          useSilentMode = true;
+
+          const spinner = ora('Resolving agent...').start();
+          spinner.stop(); // Stop before potential interactive prompts
+
+          agentId = await getAgentIdFromEnvOrSelection(
+            client,
+            agentInput,
+            false, // Allow interactive prompts for duplicate names
           );
-          process.exit(1);
-        }
 
-        // Start spinner for fetching agent details
-        const spinner = ora('Fetching agent details...').start();
+          if (!agentId) {
+            console.error(
+              chalk.red(`❌ Could not find agent: "${agentInput}"`),
+            );
+            console.log(
+              chalk.yellow('Run "xpander agent list" to see available agents'),
+            );
+            process.exit(1);
+          }
+        } else {
+          // No agent provided - interactive selection
+          console.log(chalk.hex('#743CFF')('🤖 Agent Invocation'));
+          console.log('');
 
-        // Temporarily stop spinner before agent resolution (which may print messages)
-        spinner.stop();
+          agentId = await getAgentIdFromEnvOrSelection(
+            client,
+            undefined,
+            false, // Interactive mode
+          );
 
-        // Use silent mode only if agent is explicitly provided, otherwise allow interactive selection
-        const useSilentMode = !!agentInput;
-        const agentId = await getAgentIdFromEnvOrSelection(
-          client,
-          agentInput,
-          useSilentMode,
-        );
-
-        if (!agentId) {
-          console.error(chalk.red('❌ Could not determine agent to invoke'));
-          process.exit(1);
+          if (!agentId) {
+            console.error(chalk.red('❌ No agent selected'));
+            process.exit(1);
+          }
         }
 
         // If no message was provided, prompt for it now
         if (!message) {
+          console.log(''); // Add some spacing
           const { userMessage } = await inquirer.prompt([
             {
               type: 'input',
@@ -105,7 +138,104 @@ export function registerInvokeCommand(agentCmd: Command): void {
           message = userMessage.trim();
         }
 
-        // Get agent details for display and webhook URL
+        // Check if local handler is available
+        const hasLocalHandler = canUseLocalHandler();
+
+        if (hasLocalHandler) {
+          // Use local handler
+          console.log(chalk.cyan('🏠 Using local handler: xpander_handler.py'));
+
+          try {
+            const pythonCmd = getPythonCommand();
+            const startTime = Date.now();
+
+            console.log(chalk.cyan('🚀 Starting local handler execution...'));
+            console.log('');
+
+            // Execute local handler with streaming output
+            const child = spawn(
+              pythonCmd,
+              ['xpander_handler.py', '--invoke', '--prompt', message],
+              {
+                cwd: process.cwd(),
+                stdio: ['pipe', 'pipe', 'pipe'],
+              },
+            );
+
+            let output = '';
+            let hasOutput = false;
+
+            // Stream stdout in real-time
+            child.stdout.on('data', (data) => {
+              const text = data.toString();
+              output += text;
+              hasOutput = true;
+              // Print each line as it comes
+              process.stdout.write(text);
+            });
+
+            // Stream stderr in real-time (keep original colors)
+            child.stderr.on('data', (data) => {
+              const text = data.toString();
+              output += text;
+              hasOutput = true;
+              // Print stderr as-is (don't force red color)
+              process.stderr.write(text);
+            });
+
+            // Wait for process to complete
+            const exitCode = await new Promise((resolve) => {
+              child.on('close', (code) => {
+                resolve(code);
+              });
+            });
+
+            const responseTime = Date.now() - startTime;
+
+            if (exitCode === 0) {
+              console.log('');
+              console.log(
+                chalk.green('✅ Local handler completed successfully'),
+              );
+              console.log(chalk.dim(`Response time: ${responseTime}ms`));
+
+              if (options.json && hasOutput) {
+                // Try to extract JSON from the output
+                const jsonMatch = output.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                  try {
+                    const jsonResult = JSON.parse(jsonMatch[0]);
+                    console.log('\n' + chalk.blue('📄 JSON Response:'));
+                    console.log(JSON.stringify(jsonResult, null, 2));
+                  } catch {
+                    console.log(
+                      '\n' +
+                        chalk.yellow('⚠️  Could not parse JSON from output'),
+                    );
+                  }
+                }
+              }
+            } else {
+              console.log('');
+              console.log(
+                chalk.red(`❌ Local handler failed with exit code ${exitCode}`),
+              );
+              throw new Error(`Process exited with code ${exitCode}`);
+            }
+
+            return; // Exit early, don't call webhook
+          } catch (localError: any) {
+            console.log(
+              chalk.yellow(
+                '⚠️  Local handler failed, falling back to webhook...',
+              ),
+            );
+            console.log(chalk.dim(`Error: ${localError.message}`));
+            // Continue to webhook fallback
+          }
+        }
+
+        // Get agent details for display and webhook URL (webhook fallback)
         const agentDetails = await client.getAgentWebhookDetails(agentId);
 
         // Show using agent message with checkmark only if we used silent mode
@@ -118,6 +248,8 @@ export function registerInvokeCommand(agentCmd: Command): void {
               ),
           );
         }
+
+        console.log(chalk.cyan('🌐 Using webhook invocation'));
 
         let invokeSpinner: any;
 
@@ -179,7 +311,7 @@ export function registerInvokeCommand(agentCmd: Command): void {
           if (invokeSpinner) {
             invokeSpinner.fail('Failed to invoke agent');
           } else {
-            spinner.fail('Failed to get agent details');
+            invokeSpinner.fail('Failed to get agent details');
           }
 
           // Check for 429 billing error first
