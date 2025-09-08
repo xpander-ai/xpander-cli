@@ -6187,9 +6187,9 @@ undici-types@~6.21.0:
   integrity sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==
 
 undici@^7.11.0:
-  version "7.11.0"
-  resolved "https://registry.npmjs.org/undici/-/undici-7.11.0.tgz"
-  integrity sha512-heTSIac3iLhsmZhUCjyS3JQEkZELateufzZuBaVM5RHXdSBMb1LPMQf5x+FH7qjsZYDP0ttAc3nnVpUB+wYbOg==
+  version "7.15.0"
+  resolved "https://registry.yarnpkg.com/undici/-/undici-7.15.0.tgz#7485007549ad1782b7cab2abfaa1c1aa7b75e106"
+  integrity sha512-7oZJCPvvMvTd0OlqWsIxTuItTpJBpU1tcbVl24FMn3xt3+VSunwUasmfPJRE57oNO1KsZ4PgA1xTdAX4hq8NyQ==
 
 universalify@^2.0.0:
   version "2.0.1"
