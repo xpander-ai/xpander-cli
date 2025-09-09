@@ -16,6 +16,7 @@ export interface Agent {
   is_coordinate_mode: boolean;
   status: string;
   active?: boolean; // Whether the agent is active
+  using_nemo: boolean; // Whether the agent use Nvidia NeMo
   version?: number;
   config?: any;
   icon?: string; // Icon (emoji) for the agent

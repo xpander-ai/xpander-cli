@@ -123,7 +123,7 @@ export function registerNewCommand(agentCmd: Command): void {
           }
         }
 
-        // Handle name and deployment type prompts
+        // Handle name, deployment type, and NeMo prompts
         const prompts = [];
 
         if (!name) {
@@ -141,6 +141,22 @@ export function registerNewCommand(agentCmd: Command): void {
               if (!input.trim()) return 'Name is required';
               return true;
             },
+          });
+        }
+
+        // Add NeMo prompt for agno and agno-team frameworks
+        let useNemo = false;
+        if (
+          selectedTemplate &&
+          (selectedTemplate.id === 'agno' ||
+            selectedTemplate.id === 'agno-team') &&
+          !folder
+        ) {
+          prompts.push({
+            type: 'confirm',
+            name: 'useNemo',
+            message: 'Do you want to use Nvidia NeMo for this agent?',
+            default: false,
           });
         }
 
@@ -176,6 +192,7 @@ export function registerNewCommand(agentCmd: Command): void {
 
           if (!name) name = answers.agentName;
           if (!deploymentType) deploymentType = answers.deploymentType;
+          if (answers.useNemo !== undefined) useNemo = answers.useNemo;
 
           // Show read more link for container deployment
           if (deploymentType === 'container') {
@@ -208,6 +225,7 @@ export function registerNewCommand(agentCmd: Command): void {
         let createdAgent = await client.createAgent(
           name,
           deploymentType as 'serverless' | 'container',
+          useNemo,
         );
 
         // Update spinner on success

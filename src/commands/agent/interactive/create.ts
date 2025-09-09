@@ -102,6 +102,28 @@ export async function createNewAgent(client: XpanderClient) {
         const selectedTemplate = await selectTemplate();
         displayTemplateInfo(selectedTemplate);
 
+        // Check if this is an agno or agno-team template and ask about NeMo
+        let useNemo = false;
+        if (
+          selectedTemplate.id === 'agno' ||
+          selectedTemplate.id === 'agno-team'
+        ) {
+          const nemoAnswer = await inquirer.prompt([
+            {
+              type: 'confirm',
+              name: 'useNemo',
+              message: 'Do you want to use Nvidia NeMo for this agent?',
+              default: false,
+            },
+          ]);
+          useNemo = nemoAnswer.useNemo;
+
+          // Update the agent with NeMo flag if selected
+          if (useNemo) {
+            await client.updateAgent(newAgent.id, { using_nemo: true });
+          }
+        }
+
         // Initialize agent with selected template
         await initializeAgentWithTemplate(
           client,
