@@ -12,12 +12,25 @@ const nemoConfigFileName = 'nemo_config.yml';
 export const createNeMoConfigFile = async (agent: Agent, dir: string) => {
   const configPath = path.join(dir, nemoConfigFileName);
   const config: NeMoConfig = {
+    general: {
+      use_uvloop: true,
+      telemetry: {
+        logging: { console: { _type: 'console', level: 'CRITICAL' } },
+      },
+    },
     llms: {
       [agent.model_provider]: {
         _type: agent.model_provider,
         model_name: agent.model_name,
         temperature: 0.0,
       },
+    },
+    workflow: {
+      _type: 'xpander_nemo_agent',
+      llm_name: agent.model_provider,
+      verbose: false,
+      retry_parsing_errors: true,
+      max_retries: 3,
     },
   };
 

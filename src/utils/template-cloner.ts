@@ -47,7 +47,7 @@ export async function cloneTemplate(
     const files = await fs.readdir(srcPath);
 
     for (const file of files) {
-      const baseExclusions = ['README.md', 'LICENSE', '.git', 'templates'];
+      const baseExclusions = ['LICENSE', '.git', 'templates'];
       const isBaseTemplate = !template.folderName;
       const isTemplateFolder = file.endsWith('-template');
       if (
@@ -225,6 +225,23 @@ export async function initializeAgentWithTemplate(
       template = AGENT_TEMPLATES.find((tpl) => tpl.id == 'agno-team')!;
     }
 
+    // Check if agent uses NeMo and modify template to use NeMo-specific folder
+    if (
+      agent.using_nemo &&
+      (template.id === 'agno' || template.id === 'agno-team')
+    ) {
+      // Create a modified template that points to the NeMo-specific folder
+      const nemoFolderName =
+        template.id === 'agno-team'
+          ? 'agno-nemo-template-team'
+          : 'agno-nemo-template';
+      template = {
+        ...template,
+        folderName: nemoFolderName,
+        name: `${template.name} (NeMo)`,
+      };
+    }
+
     initializationSpinner.info(`Agent ${agent?.name} retrieved successfully`);
 
     let currentDirectory = targetFolder
@@ -286,8 +303,11 @@ export async function initializeAgentWithTemplate(
       nonInteractive,
     );
 
-    // add NeMo config
-    await createNeMoConfigFile(agent, currentDirectory);
+    // add NeMo config only for agents using NeMo
+    if (agent.using_nemo) {
+      await createNeMoConfigFile(agent, currentDirectory);
+      console.log(chalk.green('✓ NeMo configuration file created'));
+    }
 
     initializationSpinner.succeed(
       `Agent initialized successfully with ${template.name} template`,

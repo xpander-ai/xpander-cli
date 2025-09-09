@@ -234,6 +234,7 @@ export class XpanderClient {
         organization_id: foundAgent.organization_id || this.orgId || '',
         model_provider: foundAgent.model_provider || 'openai',
         model_name: foundAgent.model_name || 'gpt-4',
+        using_nemo: foundAgent.using_nemo || false,
         // Add other fields as needed
       };
 
@@ -284,6 +285,7 @@ export class XpanderClient {
   async createAgent(
     name: string,
     deployment_type?: 'serverless' | 'container',
+    using_nemo?: boolean,
   ): Promise<Agent> {
     try {
       if (this.orgId) {
@@ -299,6 +301,7 @@ export class XpanderClient {
       const payload = {
         name,
         ...(deployment_type ? { deployment_type } : {}),
+        ...(using_nemo !== undefined ? { using_nemo } : {}),
         ...(this.orgId ? { organization_id: this.orgId } : {}),
       };
 
