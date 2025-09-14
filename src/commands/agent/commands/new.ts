@@ -303,55 +303,98 @@ export function registerNewCommand(agentCmd: Command): void {
             );
           }
         } else {
-          // Just return agent info without initialization
-          console.log(chalk.blue('🔑 Agent Information:'));
-          console.log(chalk.gray('Agent ID: ') + chalk.white(createdAgent.id));
-          console.log(chalk.gray('API Key: ') + chalk.white(apiKey));
-          console.log(
-            chalk.gray('Agent Workbench: ') +
-              chalk.blue(`https://app.xpander.ai/agents/${createdAgent.id}`),
-          );
+          // Ask if user wants to initialize the agent
+          console.log('');
+          const { shouldInitialize } = await inquirer.prompt([
+            {
+              type: 'confirm',
+              name: 'shouldInitialize',
+              message:
+                'Do you want to initialize this agent and download its code?',
+              default: true,
+            },
+          ]);
 
-          // Fetch the actual webhook URL from the agent endpoint
-          try {
-            const agentDetails = await client.getAgentWebhookDetails(
-              createdAgent.id,
+          if (shouldInitialize) {
+            // Initialize agent with selected template
+            console.log(chalk.cyan('Step 3: Initialize agent with template\n'));
+            try {
+              await initializeAgentWithTemplate(
+                client,
+                createdAgent.id,
+                selectedTemplate,
+                false, // interactive mode
+                undefined, // no specific folder
+              );
+            } catch (templateError: any) {
+              console.error(
+                chalk.red('❌ Template initialization failed:'),
+                templateError.message,
+              );
+              console.log(
+                chalk.yellow(
+                  'You can initialize the agent later using: xpander agent init ' +
+                    createdAgent.id,
+                ),
+              );
+            }
+          } else {
+            // Just return agent info without initialization
+            console.log(chalk.blue('🔑 Agent Information:'));
+            console.log(
+              chalk.gray('Agent ID: ') + chalk.white(createdAgent.id),
+            );
+            console.log(chalk.gray('API Key: ') + chalk.white(apiKey));
+            console.log(
+              chalk.gray('Agent Workbench: ') +
+                chalk.blue(`https://app.xpander.ai/agents/${createdAgent.id}`),
             );
 
-            // Extract webhook URL from response (adjust based on actual API response structure)
-            const webhookUrl =
-              agentDetails.webhook_url ||
-              `https://webhook.xpander.ai/?agent_id=${createdAgent.id}&asynchronous=false`;
+            // Fetch the actual webhook URL from the agent endpoint
+            try {
+              const agentDetails = await client.getAgentWebhookDetails(
+                createdAgent.id,
+              );
 
-            console.log(chalk.gray('Webhook URL: ') + chalk.white(webhookUrl));
+              // Extract webhook URL from response (adjust based on actual API response structure)
+              const webhookUrl =
+                agentDetails.webhook_url ||
+                `https://webhook.xpander.ai/?agent_id=${createdAgent.id}&asynchronous=false`;
 
-            console.log('\n' + chalk.blue('🌐 Ready-to-use curl command:'));
-            console.log(chalk.cyan(`curl -X POST "${webhookUrl}" \\`));
-            console.log(chalk.cyan(`  -H "x-api-key: ${apiKey}" \\`));
-            console.log(chalk.cyan(`  -H "Content-Type: application/json" \\`));
+              console.log(
+                chalk.gray('Webhook URL: ') + chalk.white(webhookUrl),
+              );
+
+              console.log('\n' + chalk.blue('🌐 Ready-to-use curl command:'));
+              console.log(chalk.cyan(`curl -X POST "${webhookUrl}" \\`));
+              console.log(chalk.cyan(`  -H "x-api-key: ${apiKey}" \\`));
+              console.log(
+                chalk.cyan(`  -H "Content-Type: application/json" \\`),
+              );
+              console.log(
+                chalk.cyan(`  -d '{"message": "Hi, what can you do?"}' \\`),
+              );
+              console.log(chalk.cyan(`  | jq`));
+            } catch (webhookError) {
+              console.log(
+                chalk.yellow(
+                  '⚠️ Could not fetch webhook URL, using default format',
+                ),
+              );
+            }
+
+            console.log('\n' + chalk.yellow('💡 Next steps:'));
             console.log(
-              chalk.cyan(`  -d '{"message": "Hi, what can you do?"}' \\`),
+              chalk.dim('• Download the Agent code locally: ') +
+                chalk.cyan(`x a i ${createdAgent.name}`),
             );
-            console.log(chalk.cyan(`  | jq`));
-          } catch (webhookError) {
             console.log(
-              chalk.yellow(
-                '⚠️ Could not fetch webhook URL, using default format',
-              ),
+              chalk.dim('• Or to a specific folder: ') +
+                chalk.cyan(
+                  `x a i ${createdAgent.name} --folder "~/Developer/Agents/${createdAgent.name}"`,
+                ),
             );
           }
-
-          console.log('\n' + chalk.yellow('💡 Next steps:'));
-          console.log(
-            chalk.dim('• Download the Agent code locally: ') +
-              chalk.cyan(`x a i ${createdAgent.name}`),
-          );
-          console.log(
-            chalk.dim('• Or to a specific folder: ') +
-              chalk.cyan(
-                `x a i ${createdAgent.name} --folder "~/Developer/Agents/${createdAgent.name}"`,
-              ),
-          );
         }
       } catch (error: any) {
         if (error.status === 403) {
