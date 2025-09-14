@@ -214,12 +214,43 @@ export function displayCustomHelp(): void {
   console.log(otherTable.toString());
   console.log('');
 
+  // NeMo commands
+  console.log(chalk.hex('#743CFF')('  Nvidia NeMo Toolkit'));
+  const nemoTable = new Table({
+    chars: {
+      top: '',
+      'top-mid': '',
+      'top-left': '',
+      'top-right': '',
+      bottom: '',
+      'bottom-mid': '',
+      'bottom-left': '',
+      'bottom-right': '',
+      left: '  ',
+      'left-mid': '',
+      mid: '',
+      'mid-mid': '',
+      right: '',
+      'right-mid': '',
+    },
+    style: { 'padding-left': 0, 'padding-right': 4, border: [], head: [] },
+    colWidths: [35, 45],
+  });
+  nemoTable.push(
+    [chalk.cyan('nemo pull'), 'Pull agent model config to local NeMo'],
+    [chalk.cyan('nemo push'), 'Push local NeMo config to agent'],
+  );
+  console.log(nemoTable.toString());
+  console.log('');
+
   // Examples in a box
   const examples = `${chalk.bold('Quick Start:')}
   x l                                        # xpander login
   x a n                                      # xpander agent new  
   x a d my-agent                             # xpander agent deploy
-  x a l my-agent                             # xpander agent logs`;
+  x a l my-agent                             # xpander agent logs
+  xpander nemo pull                          # sync agent config to NeMo
+  xpander nemo push                          # sync NeMo config to agent`;
 
   console.log(
     boxen(examples, {

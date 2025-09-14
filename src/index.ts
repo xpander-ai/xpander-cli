@@ -17,6 +17,7 @@ import {
   configureProfileCommand,
 } from './commands/login';
 import { configureLogsCommand } from './commands/logs';
+import { nemo } from './commands/nemo';
 // import { configureOperationsCommand } from './commands/operations/index';
 import { configureRestartCommand } from './commands/restart';
 import { configureSecretsSyncCommand } from './commands/secrets-sync';
@@ -190,6 +191,7 @@ async function main(): Promise<void> {
   configureLogsCommand(program);
   configureSecretsSyncCommand(program);
   agent(program);
+  nemo(program);
 
   // If no arguments or commands provided, show welcome message and help
   if (!hasArgs || (!hasCommand && !isRequestingHelp && !isRequestingVersion)) {
