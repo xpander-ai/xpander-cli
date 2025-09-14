@@ -19,6 +19,7 @@ export enum CommandType {
   Logs = 'logs',
   Invoke = 'invoke',
   Exit = 'exit',
+  NeMo = 'nemo',
   // Crud
   List = 'list',
   Get = 'get',
@@ -28,6 +29,9 @@ export enum CommandType {
   Update = 'update',
   Edit = 'edit',
   Open = 'open',
+  // NeMo sync commands
+  Pull = 'pull',
+  Push = 'push',
 }
 
 export const allCommands = [
