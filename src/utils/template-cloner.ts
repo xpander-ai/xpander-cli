@@ -14,12 +14,72 @@ import { AGENT_TEMPLATES, AgentTemplate } from '../types/templates';
 
 const execAsync = promisify(exec);
 
+/**
+ * Converts SSH git URL to HTTPS URL
+ * @param sshUrl - SSH URL like git@github.com:user/repo.git
+ * @returns HTTPS URL like https://github.com/user/repo.git
+ */
+function convertSshToHttps(sshUrl: string): string {
+  const sshPattern = /^git@([^:]+):(.+)\.git$/;
+  const match = sshUrl.match(sshPattern);
+  
+  if (match) {
+    const [, hostname, repoPath] = match;
+    return `https://${hostname}/${repoPath}.git`;
+  }
+  
+  // If not SSH format, return original URL
+  return sshUrl;
+}
+
+/**
+ * Attempts to clone a git repository with fallback from SSH to HTTPS
+ * @param repoUrl - Repository URL (SSH or HTTPS)
+ * @param tmpFolder - Temporary folder to clone to
+ * @param spinner - Optional ora spinner for status updates
+ */
+async function cloneWithFallback(
+  repoUrl: string,
+  tmpFolder: string,
+  spinner?: any
+): Promise<void> {
+  try {
+    // First attempt with original URL
+    await execAsync(`git clone --depth 1 ${repoUrl} ${tmpFolder}`);
+  } catch (sshError) {
+    // If SSH clone fails, try HTTPS fallback
+    const httpsUrl = convertSshToHttps(repoUrl);
+    
+    if (httpsUrl !== repoUrl) {
+      if (spinner) {
+        spinner.text = 'SSH clone failed, trying HTTPS fallback...';
+      }
+      
+      try {
+        await execAsync(`git clone --depth 1 ${httpsUrl} ${tmpFolder}`);
+        if (spinner) {
+          spinner.info('Successfully cloned using HTTPS fallback (SSH authentication not available)');
+        }
+      } catch (httpsError) {
+        // Both methods failed, throw the original SSH error with additional context
+        throw new Error(
+          `Failed to clone repository. SSH Error: ${sshError}. HTTPS fallback also failed: ${httpsError}`
+        );
+      }
+    } else {
+      // Original URL wasn't SSH format, so no fallback possible
+      throw sshError;
+    }
+  }
+}
+
 export async function cloneTemplate(
   template: AgentTemplate,
   destPath: string,
   client: XpanderClient,
   agentId: string,
   nonInteractive?: boolean,
+  spinner?: any,
 ): Promise<void> {
   const tmpFolder = path.join(os.tmpdir(), `template_tmp_${Date.now()}`);
   let askedXpanderHandlerOverwrite = false;
@@ -30,9 +90,7 @@ export async function cloneTemplate(
   let overwriteDockerignore = false;
 
   try {
-    await execAsync(
-      `git clone --depth 1 ${template.repositoryUrl} ${tmpFolder}`,
-    );
+    await cloneWithFallback(template.repositoryUrl, tmpFolder, spinner);
     const srcPath = template.folderName
       ? path.join(tmpFolder, template.folderName)
       : tmpFolder;
@@ -301,6 +359,7 @@ export async function initializeAgentWithTemplate(
       client,
       agentId,
       nonInteractive,
+      initializationSpinner,
     );
 
     // add NeMo config only for agents using NeMo

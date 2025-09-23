@@ -16,6 +16,59 @@ const execAsync = promisify(exec);
 const ASSETS_REPO = 'https://github.com/xpander-ai/custom-agents-assets';
 
 /**
+ * Converts SSH git URL to HTTPS URL
+ * @param sshUrl - SSH URL like git@github.com:user/repo.git
+ * @returns HTTPS URL like https://github.com/user/repo.git
+ */
+function convertSshToHttps(sshUrl: string): string {
+  const sshPattern = /^git@([^:]+):(.+)\.git$/;
+  const match = sshUrl.match(sshPattern);
+  
+  if (match) {
+    const [, hostname, repoPath] = match;
+    return `https://${hostname}/${repoPath}.git`;
+  }
+  
+  // If not SSH format, return original URL
+  return sshUrl;
+}
+
+/**
+ * Attempts to clone a git repository with fallback from SSH to HTTPS
+ * @param repoUrl - Repository URL (SSH or HTTPS)
+ * @param tmpFolder - Temporary folder to clone to
+ */
+async function cloneWithFallback(
+  repoUrl: string,
+  tmpFolder: string
+): Promise<void> {
+  try {
+    // First attempt with original URL
+    await execAsync(`git clone --depth 1 ${repoUrl} ${tmpFolder}`);
+  } catch (sshError) {
+    // If SSH clone fails, try HTTPS fallback
+    const httpsUrl = convertSshToHttps(repoUrl);
+    
+    if (httpsUrl !== repoUrl) {
+      console.log(chalk.yellow('SSH clone failed, trying HTTPS fallback...'));
+      
+      try {
+        await execAsync(`git clone --depth 1 ${httpsUrl} ${tmpFolder}`);
+        console.log(chalk.cyan('✓ Successfully cloned using HTTPS fallback (SSH authentication not available)'));
+      } catch (httpsError) {
+        // Both methods failed, throw the original SSH error with additional context
+        throw new Error(
+          `Failed to clone repository. SSH Error: ${sshError}. HTTPS fallback also failed: ${httpsError}`
+        );
+      }
+    } else {
+      // Original URL wasn't SSH format, so no fallback possible
+      throw sshError;
+    }
+  }
+}
+
+/**
  * Clone a GitHub repo and copy its contents to a destination path,
  * excluding README.md, LICENSE, and .git.
  */
@@ -32,7 +85,7 @@ const cloneRepoAndCopy = async (
   let overwriteDockerignore = false;
 
   try {
-    await execAsync(`git clone --depth 1 ${repoUrl} ${tmpFolder}`);
+    await cloneWithFallback(repoUrl, tmpFolder);
     await fs.mkdir(destPath, { recursive: true });
     const files = await fs.readdir(tmpFolder);
 
