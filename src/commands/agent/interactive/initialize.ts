@@ -1,17 +1,14 @@
-import { exec } from 'child_process';
 import * as fssync from 'fs';
 import fs from 'fs/promises';
 import * as os from 'os';
 import path from 'path';
-import { promisify } from 'util';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import ora from 'ora';
 import { AGENT_TEMPLATES } from '../../../types';
 import { XpanderClient } from '../../../utils/client';
 import { fileExists, pathIsEmpty } from '../../../utils/custom-agents';
-
-const execAsync = promisify(exec);
+import { cloneWithFallback } from '../../../utils/git-clone';
 
 const ASSETS_REPO = 'https://github.com/xpander-ai/custom-agents-assets';
 
@@ -32,7 +29,7 @@ const cloneRepoAndCopy = async (
   let overwriteDockerignore = false;
 
   try {
-    await execAsync(`git clone --depth 1 ${repoUrl} ${tmpFolder}`);
+    await cloneWithFallback(repoUrl, tmpFolder, '--depth 1');
     await fs.mkdir(destPath, { recursive: true });
     const files = await fs.readdir(tmpFolder);
 

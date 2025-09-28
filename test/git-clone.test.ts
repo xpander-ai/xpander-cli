@@ -171,5 +171,40 @@ describe('Git Clone Utility', () => {
         'git clone --depth 5 --branch main git@github.com:owner/repo.git /tmp/dest',
       );
     });
+
+    test('should verify HTTPS fallback uses correct URL', async () => {
+      let capturedCommands: string[] = [];
+      mockExec.mockImplementation((command: string, callback: any) => {
+        capturedCommands.push(command);
+        if (capturedCommands.length === 1) {
+          // First call (SSH) fails
+          process.nextTick(() =>
+            callback(new Error('SSH authentication failed'), null),
+          );
+        } else {
+          // Second call (HTTPS) succeeds
+          process.nextTick(() =>
+            callback(null, { stdout: 'success', stderr: '' }),
+          );
+        }
+        return {} as any;
+      });
+
+      const mockConsoleLog = jest
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+
+      await cloneWithFallback('git@github.com:owner/repo.git', '/tmp/dest');
+
+      expect(capturedCommands).toHaveLength(2);
+      expect(capturedCommands[0]).toBe(
+        'git clone --depth 1 git@github.com:owner/repo.git /tmp/dest',
+      );
+      expect(capturedCommands[1]).toBe(
+        'git clone --depth 1 https://github.com/owner/repo.git /tmp/dest',
+      );
+
+      mockConsoleLog.mockRestore();
+    });
   });
 });
