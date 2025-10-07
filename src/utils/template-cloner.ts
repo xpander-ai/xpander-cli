@@ -142,9 +142,9 @@ export async function cloneTemplate(
     const envPath = path.join(destPath, '.env');
     const envExamplePath = path.join(destPath, '.env.example');
     const envVars: any = {
-      XPANDER_API_KEY: `"${client.apiKey}"`,
-      XPANDER_ORGANIZATION_ID: `"${client.orgId!}"`,
-      XPANDER_AGENT_ID: `"${agentId}"`,
+      XPANDER_API_KEY: client.apiKey,
+      XPANDER_ORGANIZATION_ID: client.orgId!,
+      XPANDER_AGENT_ID: agentId,
     };
 
     const existingEnv = (await fileExists(envPath))
