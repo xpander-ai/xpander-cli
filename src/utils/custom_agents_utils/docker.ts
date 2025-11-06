@@ -64,12 +64,14 @@ const ensureDockerRunning = async (
  *
  * @param contextPath - Path to the Docker build context (directory with Dockerfile).
  * @param imageName - Name for the Docker image.
+ * @param skipLocalTests - If true, skip local Docker container tests.
  * @returns Full path to the resulting .tar.gz archive.
  */
 export const buildAndSaveDockerImage = async (
   deploymentSpinner: ora.Ora,
   contextPath: string,
   imageName: string,
+  skipLocalTests: boolean = false,
 ): Promise<string | undefined> => {
   const resolvedContext = path.resolve(contextPath);
   const fullImageName = `${imageName}:latest`;
@@ -101,10 +103,14 @@ export const buildAndSaveDockerImage = async (
     resolvedContext,
   ]);
 
-  // Test the image locally before proceeding with export
-  const testPassed = await testDockerImage(deploymentSpinner, imageName, 10);
-  if (!testPassed) {
-    return;
+  // Test the image locally before proceeding with export (unless skipped)
+  if (!skipLocalTests) {
+    const testPassed = await testDockerImage(deploymentSpinner, imageName, 10);
+    if (!testPassed) {
+      return;
+    }
+  } else {
+    deploymentSpinner.text = 'Skipping local tests (--skip-local-tests flag)';
   }
 
   deploymentSpinner.text = 'Exporting your AI Agent files';
