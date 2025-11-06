@@ -65,6 +65,7 @@ export function agent(program: Command): void {
     .description('Deploy agent')
     .option('--profile <n>', 'Profile to use')
     .option('--confirm', 'Skip confirmation prompts')
+    .option('--skip-local-tests', 'Skip local Docker container tests')
     .action(async (agentId, options) => {
       const { createClient } = await import('../../utils/client');
       const { getAgentIdFromEnvOrSelection } = await import(
@@ -77,7 +78,12 @@ export function agent(program: Command): void {
         agentId,
       );
       if (!resolvedAgentId) return;
-      await deployAgent(client, resolvedAgentId, options.confirm);
+      await deployAgent(
+        client,
+        resolvedAgentId,
+        options.confirm,
+        options.skipLocalTests,
+      );
     });
 
   agentCmd
