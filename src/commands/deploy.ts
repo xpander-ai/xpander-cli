@@ -14,6 +14,7 @@ export function configureDeployCommand(program: Command): Command {
     .description('Deploy agent')
     .option('--profile <n>', 'Profile to use')
     .option('--confirm', 'Skip confirmation prompts')
+    .option('--skip-local-tests', 'Skip local Docker container tests')
     .action(async (agentId, options) => {
       const client = createClient(options.profile);
 
@@ -25,7 +26,12 @@ export function configureDeployCommand(program: Command): Command {
         return;
       }
 
-      await deployAgent(client, resolvedAgentId, options.confirm);
+      await deployAgent(
+        client,
+        resolvedAgentId,
+        options.confirm,
+        options.skipLocalTests,
+      );
     });
 
   return operationsCmd;

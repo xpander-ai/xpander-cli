@@ -16,6 +16,7 @@ export async function deployAgent(
   client: XpanderClient,
   _agentId?: string,
   skipDeploymentConfirmation: boolean = false,
+  skipLocalTests: boolean = false,
 ) {
   console.log('\n');
   console.log(chalk.bold.blue('✨ Agent deployment'));
@@ -78,6 +79,7 @@ export async function deployAgent(
       deploymentSpinner,
       currentDirectory,
       config.agent_id,
+      skipLocalTests,
     );
 
     if (!imagePath) {
