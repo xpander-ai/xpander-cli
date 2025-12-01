@@ -135,6 +135,50 @@ export const AGENT_TEMPLATES: AgentTemplate[] = [
     visible: false, // Draft - not ready yet
     icon: '🦙',
   },
+  {
+    id: 'strands',
+    name: 'Strands',
+    description:
+      'Strands framework template for building AI agents with tool support',
+    category: TemplateCategory.AI_FRAMEWORK,
+    folderName: 'strands-template',
+    repositoryUrl: 'git@github.com:xpander-ai/custom-agents-assets.git',
+    visible: true,
+    icon: '🧵',
+  },
+  {
+    id: 'adk',
+    name: 'Google ADK',
+    description:
+      'Google Agent Development Kit template with LiteLLM integration',
+    category: TemplateCategory.AI_FRAMEWORK,
+    folderName: 'adk-template',
+    repositoryUrl: 'git@github.com:xpander-ai/custom-agents-assets.git',
+    visible: true,
+    icon: '🔧',
+  },
+  {
+    id: 'openai-agents-sdk',
+    name: 'OpenAI Agents SDK',
+    description:
+      'OpenAI Agents SDK template for building agents with OpenAI models',
+    category: TemplateCategory.AI_FRAMEWORK,
+    folderName: 'openai-agents-sdk-template',
+    repositoryUrl: 'git@github.com:xpander-ai/custom-agents-assets.git',
+    visible: true,
+    icon: '🤖',
+  },
+  {
+    id: 'langchain',
+    name: 'LangChain',
+    description:
+      'LangChain framework template for building AI agents and chains',
+    category: TemplateCategory.AI_FRAMEWORK,
+    folderName: 'langchain-template',
+    repositoryUrl: 'git@github.com:xpander-ai/custom-agents-assets.git',
+    visible: true,
+    icon: '🦜',
+  },
 ];
 
 /**
