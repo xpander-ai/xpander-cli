@@ -129,9 +129,9 @@ export async function initializeAgent(
   console.log(chalk.dim('─'.repeat(60)));
 
   let agentId = agentToInitialize;
+  const fetchSpinner = ora('Fetching your agents...').start();
+  const agentsList = await client.getAgents();
   if (!agentId) {
-    const fetchSpinner = ora('Fetching your agents...').start();
-    const agentsList = await client.getAgents();
     fetchSpinner.succeed('Agents loaded successfully');
 
     if (!agentsList || agentsList.length === 0) {
@@ -182,9 +182,11 @@ export async function initializeAgent(
     try {
       // disabled templates selection, agno only
       // const selectedTemplate = await selectTemplate();
-      const selectedTemplate = AGENT_TEMPLATES.find(
-        (tmp) => tmp.id === 'agno',
-      )!;
+      const agentDetails = agentsList.find((ag) => ag.id === agentId);
+      const selectedTemplate =
+        AGENT_TEMPLATES.find((tmp) => tmp.id === agentDetails?.framework)! ||
+        AGENT_TEMPLATES.find((tmp) => tmp.id === 'agno')!;
+
       const { displayTemplateInfo } = await import(
         '../../../utils/template-selector'
       );

@@ -9,6 +9,7 @@ export type DeploymentType = 'serverless' | 'container';
 export interface Agent {
   id: string;
   name: string;
+  framework: string;
   description: string;
   organization_id: string;
   created_at: string;
