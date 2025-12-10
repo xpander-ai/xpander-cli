@@ -70,7 +70,14 @@ export async function deployAgent(
 
     const config = await getXpanderConfigFromEnvFile(currentDirectory);
 
-    const agent = await client.getAgent(config.agent_id);
+    // If .env file has credentials, use them instead of profile credentials
+    let deployClient = client;
+    if (config.api_key && config.organization_id) {
+      deploymentSpinner.info('Using credentials from .env file');
+      deployClient = new XpanderClient(config.api_key, config.organization_id);
+    }
+
+    const agent = await deployClient.getAgent(config.agent_id);
     if (!agent) {
       deploymentSpinner.fail(`Agent ${config.agent_id} not found!`);
       return;
@@ -79,7 +86,7 @@ export async function deployAgent(
     // Stop any existing deployment before deploying new version
     deploymentSpinner.text = `Stopping existing deployment of ${agent.name} if running...`;
     try {
-      await stopDeployment(deploymentSpinner, client, agent.id);
+      await stopDeployment(deploymentSpinner, deployClient, agent.id);
       deploymentSpinner.start(); // Restart spinner after stop operation
     } catch (error: any) {
       // If stop fails (e.g., no deployment running), continue anyway
@@ -106,7 +113,7 @@ export async function deployAgent(
     // upload and deploy
     const result = await uploadAndDeploy(
       deploymentSpinner,
-      client,
+      deployClient,
       agent.id,
       imagePath,
       currentDirectory,
