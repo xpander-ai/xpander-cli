@@ -254,9 +254,9 @@ export async function initializeAgent(
     const envExamplePath = path.join(currentDirectory, '.env.example');
 
     const envVars: any = {
-      XPANDER_API_KEY: `"${client.apiKey}"`,
-      XPANDER_ORGANIZATION_ID: `"${client.orgId!}"`,
-      XPANDER_AGENT_ID: `"${agentId}"`,
+      XPANDER_API_KEY: client.apiKey,
+      XPANDER_ORGANIZATION_ID: client.orgId!,
+      XPANDER_AGENT_ID: agentId,
     };
 
     const existingEnv = (await fileExists(envPath))
