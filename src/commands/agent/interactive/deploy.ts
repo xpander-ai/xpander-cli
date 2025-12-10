@@ -108,10 +108,19 @@ export async function deployAgent(
 
     deploymentSpinner.stop();
 
-    // Get agent ID - either from .env, command line, or prompt user
-    let agentId: string | undefined = config.agent_id || _agentId;
+    // Get agent ID - command line takes precedence over .env file
+    // Need to resolve agent name to ID if a name was provided
+    let agentId: string | undefined;
 
-    if (!agentId) {
+    if (_agentId) {
+      // Command-line argument provided - resolve name to ID
+      const { resolveAgentId } = await import('../../../utils/agent-resolver');
+      const resolved = await resolveAgentId(deployClient, _agentId, true);
+      agentId = resolved || undefined;
+    } else if (config.agent_id) {
+      // Use agent ID from .env file
+      agentId = config.agent_id;
+    } else {
       // No agent ID provided, prompt user to select or create one
       const { getAgentIdFromEnvOrSelection } = await import(
         '../../../utils/agent-resolver'
@@ -179,7 +188,7 @@ export async function deployAgent(
       try {
         // Create agent with basic configuration
         agent = await deployClient.createAgent(
-          agentId, // Use agent ID as name
+          agentId!, // Use agent ID as name
           'container', // Default to container deployment
         );
         deploymentSpinner.succeed(`Agent ${agent.name} created successfully`);
@@ -201,6 +210,7 @@ export async function deployAgent(
       deploymentSpinner.info(
         `No existing deployment to stop, proceeding with deployment...`,
       );
+      deploymentSpinner.start(); // Restart spinner after info message
     }
 
     deploymentSpinner.text = `Building agent ${agent.name}`;
