@@ -48,7 +48,50 @@ export async function deployAgent(
       return;
     }
 
-    const config = await getXpanderConfigFromEnvFile(currentDirectory);
+    // Try to read config from .env file (may be missing AGENT_ID)
+    let config: {
+      api_key?: string;
+      organization_id?: string;
+      agent_id?: string;
+    };
+    try {
+      config = await getXpanderConfigFromEnvFile(currentDirectory);
+    } catch (error: any) {
+      // If only AGENT_ID is missing, that's ok - we'll prompt for it
+      if (error.message && error.message.includes('XPANDER_AGENT_ID')) {
+        deploymentSpinner.info(
+          'No agent ID found in .env file, will prompt for selection',
+        );
+        // Try to read just the credentials
+        const fs = await import('fs/promises');
+        const path = await import('path');
+        const envPath = path.join(currentDirectory, '.env');
+        const envContent = await fs.readFile(envPath, 'utf-8');
+        const envVars = Object.fromEntries(
+          envContent
+            .split('\n')
+            .map((line) => line.trim())
+            .filter(
+              (line) => line && !line.startsWith('#') && line.includes('='),
+            )
+            .map((line) => {
+              const [key, ...rest] = line.split('=');
+              const value = rest
+                .join('=')
+                .trim()
+                .replace(/^['"]|['"]$/g, '');
+              return [key.trim(), value];
+            }),
+        );
+        config = {
+          api_key: envVars.XPANDER_API_KEY,
+          organization_id: envVars.XPANDER_ORGANIZATION_ID,
+          agent_id: envVars.XPANDER_AGENT_ID,
+        };
+      } else {
+        throw error;
+      }
+    }
 
     // If .env file has credentials, use them instead of profile credentials
     let deployClient = client;
@@ -57,10 +100,25 @@ export async function deployAgent(
       deployClient = new XpanderClient(config.api_key, config.organization_id);
     }
 
-    // Use agent ID from .env file
-    const agentId = config.agent_id;
-
     deploymentSpinner.stop();
+
+    // Get agent ID - either from .env, command line, or prompt user
+    let agentId: string | undefined = config.agent_id || _agentId;
+
+    if (!agentId) {
+      // No agent ID provided, prompt user to select or create one
+      const { getAgentIdFromEnvOrSelection } = await import(
+        '../../../utils/agent-resolver'
+      );
+      const selectedAgentId = await getAgentIdFromEnvOrSelection(
+        deployClient,
+        undefined,
+      );
+      if (!selectedAgentId) {
+        return;
+      }
+      agentId = selectedAgentId;
+    }
 
     if (!skipDeploymentConfirmation && !isNonInteractive) {
       const { shouldDeploy } = await inquirer.prompt([
@@ -84,9 +142,9 @@ export async function deployAgent(
 
     deploymentSpinner.start('Retrieving agent information...');
 
-    const agent = await deployClient.getAgent(agentId);
+    const agent = await deployClient.getAgent(agentId!);
     if (!agent) {
-      deploymentSpinner.fail(`Agent ${config.agent_id} not found!`);
+      deploymentSpinner.fail(`Agent ${agentId} not found!`);
       return;
     }
 
@@ -108,12 +166,12 @@ export async function deployAgent(
     const imagePath = await buildAndSaveDockerImage(
       deploymentSpinner,
       currentDirectory,
-      config.agent_id,
+      agentId!,
       skipLocalTests,
     );
 
     if (!imagePath) {
-      deploymentSpinner.fail(`Agent ${config.agent_id} failed to build!`);
+      deploymentSpinner.fail(`Agent ${agentId} failed to build!`);
       return;
     }
 
