@@ -149,7 +149,7 @@ export async function deployAgent(
         `Agent ${agentId} not found, creating new agent...`,
       );
 
-      if (!isNonInteractive) {
+      if (!skipDeploymentConfirmation && !isNonInteractive) {
         const { shouldCreate } = await inquirer.prompt([
           {
             type: 'confirm',
@@ -162,6 +162,10 @@ export async function deployAgent(
           deploymentSpinner.fail('Agent creation cancelled');
           return;
         }
+      } else if (skipDeploymentConfirmation || isNonInteractive) {
+        console.log(
+          chalk.yellow('→ Agent does not exist, creating automatically...'),
+        );
       }
 
       deploymentSpinner.start('Creating new agent...');
