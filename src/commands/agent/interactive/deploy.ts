@@ -21,6 +21,7 @@ export async function deployAgent(
   skipDeploymentConfirmation: boolean = false,
   skipLocalTests: boolean = false,
   workingDirectory?: string,
+  useProfileCredentials: boolean = false,
 ) {
   console.log('\n');
   console.log(chalk.bold.blue('✨ Agent deployment'));
@@ -94,10 +95,15 @@ export async function deployAgent(
     }
 
     // If .env file has credentials, use them instead of profile credentials
+    // BUT only if --profile was NOT explicitly specified
     let deployClient = client;
-    if (config.api_key && config.organization_id) {
+    if (!useProfileCredentials && config.api_key && config.organization_id) {
       deploymentSpinner.info('Using credentials from .env file');
       deployClient = new XpanderClient(config.api_key, config.organization_id);
+    } else if (useProfileCredentials) {
+      deploymentSpinner.info(
+        'Using credentials from profile (--profile flag set)',
+      );
     }
 
     deploymentSpinner.stop();

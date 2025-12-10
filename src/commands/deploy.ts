@@ -27,6 +27,7 @@ export function configureDeployCommand(program: Command): Command {
         options.confirm,
         options.skipLocalTests,
         options.path,
+        !!options.profile, // Use profile credentials if --profile was explicitly set
       );
     });
 

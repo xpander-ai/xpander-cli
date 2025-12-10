@@ -80,6 +80,7 @@ export function agent(program: Command): void {
         options.confirm,
         options.skipLocalTests,
         options.path,
+        !!options.profile, // Use profile credentials if --profile was explicitly set
       );
     });
 
