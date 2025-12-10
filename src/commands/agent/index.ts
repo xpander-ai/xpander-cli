@@ -64,6 +64,10 @@ export function agent(program: Command): void {
     .alias('d')
     .description('Deploy agent')
     .option('--profile <n>', 'Profile to use')
+    .option(
+      '--path <path>',
+      'Path to agent directory (defaults to current directory)',
+    )
     .option('--confirm', 'Skip confirmation prompts')
     .option('--skip-local-tests', 'Skip local Docker container tests')
     .action(async (agentId, options) => {
@@ -83,6 +87,7 @@ export function agent(program: Command): void {
         resolvedAgentId,
         options.confirm,
         options.skipLocalTests,
+        options.path,
       );
     });
 

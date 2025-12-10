@@ -7,7 +7,10 @@ import {
   ensureAgentIsInitialized,
   pathIsEmpty,
 } from '../../../utils/custom-agents';
-import { uploadAndDeploy } from '../../../utils/custom_agents_utils/deploymentManagement';
+import {
+  stopDeployment,
+  uploadAndDeploy,
+} from '../../../utils/custom_agents_utils/deploymentManagement';
 import { buildAndSaveDockerImage } from '../../../utils/custom_agents_utils/docker';
 import { getXpanderConfigFromEnvFile } from '../../../utils/custom_agents_utils/generic';
 import { configureLogsCommand } from '../../logs';
@@ -17,6 +20,7 @@ export async function deployAgent(
   _agentId?: string,
   skipDeploymentConfirmation: boolean = false,
   skipLocalTests: boolean = false,
+  workingDirectory?: string,
 ) {
   console.log('\n');
   console.log(chalk.bold.blue('✨ Agent deployment'));
@@ -46,8 +50,8 @@ export async function deployAgent(
 
   const deploymentSpinner = ora(`Initializing deployment...`).start();
   try {
-    // Check if current folder is empty
-    const currentDirectory = process.cwd();
+    // Use provided path or default to current directory
+    const currentDirectory = workingDirectory || process.cwd();
     if (await pathIsEmpty(currentDirectory)) {
       deploymentSpinner.fail(
         'Current workdir is no initialized, initialize your agent first.',
@@ -70,6 +74,18 @@ export async function deployAgent(
     if (!agent) {
       deploymentSpinner.fail(`Agent ${config.agent_id} not found!`);
       return;
+    }
+
+    // Stop any existing deployment before deploying new version
+    deploymentSpinner.text = `Stopping existing deployment of ${agent.name} if running...`;
+    try {
+      await stopDeployment(deploymentSpinner, client, agent.id);
+      deploymentSpinner.start(); // Restart spinner after stop operation
+    } catch (error: any) {
+      // If stop fails (e.g., no deployment running), continue anyway
+      deploymentSpinner.info(
+        `No existing deployment to stop, proceeding with deployment...`,
+      );
     }
 
     deploymentSpinner.text = `Building agent ${agent.name}`;
