@@ -142,10 +142,43 @@ export async function deployAgent(
 
     deploymentSpinner.start('Retrieving agent information...');
 
-    const agent = await deployClient.getAgent(agentId!);
+    let agent = await deployClient.getAgent(agentId!);
     if (!agent) {
-      deploymentSpinner.fail(`Agent ${agentId} not found!`);
-      return;
+      // Agent doesn't exist, create it
+      deploymentSpinner.info(
+        `Agent ${agentId} not found, creating new agent...`,
+      );
+
+      if (!isNonInteractive) {
+        const { shouldCreate } = await inquirer.prompt([
+          {
+            type: 'confirm',
+            name: 'shouldCreate',
+            message: `Agent ${agentId} does not exist. Would you like to create it?`,
+            default: true,
+          },
+        ]);
+        if (!shouldCreate) {
+          deploymentSpinner.fail('Agent creation cancelled');
+          return;
+        }
+      }
+
+      deploymentSpinner.start('Creating new agent...');
+
+      try {
+        // Create agent with basic configuration
+        agent = await deployClient.createAgent(
+          agentId, // Use agent ID as name
+          'container', // Default to container deployment
+        );
+        deploymentSpinner.succeed(`Agent ${agent.name} created successfully`);
+      } catch (createError: any) {
+        deploymentSpinner.fail(
+          `Failed to create agent: ${createError.message}`,
+        );
+        return;
+      }
     }
 
     // Stop any existing deployment before deploying new version
