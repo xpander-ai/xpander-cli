@@ -72,19 +72,11 @@ export function agent(program: Command): void {
     .option('--skip-local-tests', 'Skip local Docker container tests')
     .action(async (agentId, options) => {
       const { createClient } = await import('../../utils/client');
-      const { getAgentIdFromEnvOrSelection } = await import(
-        '../../utils/agent-resolver'
-      );
       const { deployAgent } = await import('./interactive/deploy');
       const client = createClient(options.profile);
-      const resolvedAgentId = await getAgentIdFromEnvOrSelection(
-        client,
-        agentId,
-      );
-      if (!resolvedAgentId) return;
       await deployAgent(
         client,
-        resolvedAgentId,
+        agentId,
         options.confirm,
         options.skipLocalTests,
         options.path,

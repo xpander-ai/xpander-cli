@@ -28,26 +28,6 @@ export async function deployAgent(
 
   const isNonInteractive = process.env.XPANDER_NON_INTERACTIVE === 'true';
 
-  if (!skipDeploymentConfirmation && !isNonInteractive) {
-    const { shouldDeploy } = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'shouldDeploy',
-        message: 'Are you sure you want to deploy your AI Agent?',
-        default: true,
-      },
-    ]);
-    if (!shouldDeploy) {
-      return;
-    }
-  } else if (!skipDeploymentConfirmation && isNonInteractive) {
-    console.log(
-      chalk.yellow(
-        '→ Running in non-interactive mode, proceeding with deployment',
-      ),
-    );
-  }
-
   const deploymentSpinner = ora(`Initializing deployment...`).start();
   try {
     // Use provided path or default to current directory
@@ -77,7 +57,34 @@ export async function deployAgent(
       deployClient = new XpanderClient(config.api_key, config.organization_id);
     }
 
-    const agent = await deployClient.getAgent(config.agent_id);
+    // Use agent ID from .env file
+    const agentId = config.agent_id;
+
+    deploymentSpinner.stop();
+
+    if (!skipDeploymentConfirmation && !isNonInteractive) {
+      const { shouldDeploy } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'shouldDeploy',
+          message: 'Are you sure you want to deploy your AI Agent?',
+          default: true,
+        },
+      ]);
+      if (!shouldDeploy) {
+        return;
+      }
+    } else if (!skipDeploymentConfirmation && isNonInteractive) {
+      console.log(
+        chalk.yellow(
+          '→ Running in non-interactive mode, proceeding with deployment',
+        ),
+      );
+    }
+
+    deploymentSpinner.start('Retrieving agent information...');
+
+    const agent = await deployClient.getAgent(agentId);
     if (!agent) {
       deploymentSpinner.fail(`Agent ${config.agent_id} not found!`);
       return;

@@ -1,6 +1,5 @@
 import { Command } from 'commander';
 import { CommandType } from '../types';
-import { getAgentIdFromEnvOrSelection } from '../utils/agent-resolver';
 import { createClient } from '../utils/client';
 import { deployAgent } from './agent/interactive/deploy';
 
@@ -22,17 +21,9 @@ export function configureDeployCommand(program: Command): Command {
     .action(async (agentId, options) => {
       const client = createClient(options.profile);
 
-      const resolvedAgentId = await getAgentIdFromEnvOrSelection(
-        client,
-        agentId,
-      );
-      if (!resolvedAgentId) {
-        return;
-      }
-
       await deployAgent(
         client,
-        resolvedAgentId,
+        agentId,
         options.confirm,
         options.skipLocalTests,
         options.path,
