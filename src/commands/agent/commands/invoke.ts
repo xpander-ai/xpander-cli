@@ -7,7 +7,8 @@ import ora from 'ora';
 import { getAgentIdFromEnvOrSelection } from '../../../utils/agent-resolver';
 import { BillingErrorHandler } from '../../../utils/billing-error';
 import { createClient } from '../../../utils/client';
-import { getApiKey } from '../../../utils/config';
+import { getApiKey, getOrganizationId } from '../../../utils/config';
+import { getXpanderConfigFromEnvFile } from '../../../utils/custom_agents_utils/generic';
 import {
   canUseLocalHandler,
   getPythonCommand,
@@ -24,16 +25,28 @@ export function registerInvokeCommand(agentCmd: Command): void {
       'after',
       `
 Examples:
-  $ xpander agent invoke                          # Interactive: select agent and enter message
-  $ xpander agent invoke "MyAgent"                # Select agent, then prompt for message
-  $ xpander agent invoke "MyAgent" "Hello world"  # Direct invocation
-  $ xpander agent invoke --json MyAgent "task"    # Get JSON response`,
+  $ xpander agent invoke                                    # Interactive: select agent and enter message
+  $ xpander agent invoke "MyAgent"                          # Select agent, then prompt for message
+  $ xpander agent invoke "MyAgent" "Hello world"            # Direct invocation (uses API by default)
+  $ xpander agent invoke --agent-id abc123 --message "hi"  # Explicit agent ID and message
+  $ xpander agent invoke --agent-name "MyAgent" -m "hi"    # Explicit agent name and message
+  $ xpander agent invoke --json MyAgent "task"              # Get JSON response
+  $ xpander agent invoke --local MyAgent "task"             # Use local handler
+  $ xpander agent invoke --webhook MyAgent "task"           # Use webhook invocation
+
+  In an agent directory with .env file:
+  $ xpander agent invoke "hi"                               # Uses agent from .env, message is "hi"
+  $ xpander agent invoke --message "hi"                     # Explicit message with .env agent`,
     )
     .option('--agent <agent>', 'Agent name or ID to invoke')
     .option('--agent-id <agent_id>', 'Agent ID to invoke')
     .option('--agent-name <agent_name>', 'Agent name to invoke')
+    .option('--message <message>', 'Message to send to the agent')
     .option('--profile <name>', 'Profile to use')
     .option('--json', 'Output raw JSON response')
+    .option('--local', 'Use local handler (xpander_handler.py)')
+    .option('--api', 'Use API invocation (default)')
+    .option('--webhook', 'Use webhook invocation')
     .action(async (agentArg, messageArgs, options) => {
       try {
         const apiKey = getApiKey(options.profile);
@@ -48,12 +61,30 @@ Examples:
 
         const client = createClient(options.profile);
 
+        // Check if we're in an agent directory with .env file
+        let hasEnvAgent = false;
+        try {
+          const config = await getXpanderConfigFromEnvFile(process.cwd());
+          hasEnvAgent = !!config?.agent_id;
+        } catch (error) {
+          // No .env file or no agent_id in it
+          hasEnvAgent = false;
+        }
+
         // Handle agent and message parsing
         let agentInput: string | undefined;
         let message: string;
 
-        // Check if we have explicit agent flags (old syntax)
-        if (options.agent || options.agentId || options.agentName) {
+        // Check if we have explicit --message flag
+        if (options.message) {
+          // Explicit message flag - use it and check for agent flags
+          message = options.message;
+          agentInput = options.agent || options.agentId || options.agentName;
+          // If no agent flags, use positional arg or env
+          if (!agentInput && agentArg) {
+            agentInput = agentArg;
+          }
+        } else if (options.agent || options.agentId || options.agentName) {
           // Old syntax: flags specify agent, all positional args are message
           agentInput = options.agent || options.agentId || options.agentName;
           const allMessageParts = [];
@@ -64,6 +95,17 @@ Examples:
             allMessageParts.push(messageArgs);
           }
           message = allMessageParts.join(' ').trim();
+        } else if (hasEnvAgent) {
+          // We're in an agent directory - treat all args as message
+          const allMessageParts = [];
+          if (agentArg) allMessageParts.push(agentArg);
+          if (Array.isArray(messageArgs)) {
+            allMessageParts.push(...messageArgs);
+          } else if (messageArgs) {
+            allMessageParts.push(messageArgs);
+          }
+          message = allMessageParts.join(' ').trim();
+          agentInput = undefined; // Will use .env agent
         } else {
           // New syntax: first arg is agent, rest is message
           agentInput = agentArg;
@@ -73,9 +115,13 @@ Examples:
         }
 
         // Handle different invocation patterns:
-        // 1. xpander agent invoke -> interactive agent selection + prompt for message
-        // 2. xpander agent invoke "agent" -> resolve agent + prompt for message
-        // 3. xpander agent invoke "agent" "message" -> resolve agent + use message
+        // When in agent directory with .env:
+        //   1. xpander agent invoke -> use .env agent + prompt for message
+        //   2. xpander agent invoke "message" -> use .env agent + use message
+        // When NOT in agent directory:
+        //   1. xpander agent invoke -> interactive agent selection + prompt for message
+        //   2. xpander agent invoke "agent" -> resolve agent + prompt for message
+        //   3. xpander agent invoke "agent" "message" -> resolve agent + use message
 
         let agentId: string | null = null;
         let useSilentMode = false;
@@ -90,7 +136,7 @@ Examples:
           agentId = await getAgentIdFromEnvOrSelection(
             client,
             agentInput,
-            false, // Allow interactive prompts for duplicate names
+            true, // Silent mode - we'll print our own message
           );
 
           if (!agentId) {
@@ -138,10 +184,39 @@ Examples:
           message = userMessage.trim();
         }
 
-        // Check if local handler is available
-        const hasLocalHandler = canUseLocalHandler();
+        // Determine invocation mode: local, api, or webhook
+        const useLocal = options.local;
+        const useWebhook = options.webhook;
+        const useApi = options.api || (!useLocal && !useWebhook); // Default to API
 
-        if (hasLocalHandler) {
+        // Get agent details for display
+        const agentDetails = await client.getAgentWebhookDetails(agentId);
+
+        // Show using agent message with checkmark only if we used silent mode
+        if (useSilentMode) {
+          console.log(
+            chalk.green('✔') +
+              ' ' +
+              chalk.hex('#743CFF')(
+                `Using agent: ${agentDetails.name} (${agentId})`,
+              ),
+          );
+        }
+
+        let invokeSpinner: any;
+
+        // LOCAL HANDLER INVOCATION
+        if (useLocal) {
+          // Check if local handler is available
+          if (!canUseLocalHandler()) {
+            console.error(chalk.red('❌ Local handler not available'));
+            console.log(
+              chalk.yellow(
+                'Make sure xpander_handler.py exists in the current directory',
+              ),
+            );
+            process.exit(1);
+          }
           // Use local handler
           console.log(chalk.cyan('🏠 Using local handler: xpander_handler.py'));
 
@@ -223,126 +298,215 @@ Examples:
               throw new Error(`Process exited with code ${exitCode}`);
             }
 
-            return; // Exit early, don't call webhook
+            return; // Exit early after local invocation
           } catch (localError: any) {
             console.log(
-              chalk.yellow(
-                '⚠️  Local handler failed, falling back to webhook...',
-              ),
+              chalk.red('❌ Local handler failed:'),
+              localError.message,
             );
-            console.log(chalk.dim(`Error: ${localError.message}`));
-            // Continue to webhook fallback
-          }
-        }
-
-        // Get agent details for display and webhook URL (webhook fallback)
-        const agentDetails = await client.getAgentWebhookDetails(agentId);
-
-        // Show using agent message with checkmark only if we used silent mode
-        if (useSilentMode) {
-          console.log(
-            chalk.green('✔') +
-              ' ' +
-              chalk.hex('#743CFF')(
-                `Using agent: ${agentDetails.name} (${agentId})`,
-              ),
-          );
-        }
-
-        console.log(chalk.cyan('🌐 Using webhook invocation'));
-
-        let invokeSpinner: any;
-
-        try {
-          const webhookUrl =
-            agentDetails.webhook_url ||
-            `https://webhook.xpander.ai/?agent_id=${agentId}&asynchronous=false`;
-
-          // Start spinner for webhook call
-          invokeSpinner = ora(`Invoking agent with: "${message}"...`).start();
-
-          // Start timing from webhook call
-          const startTime = Date.now();
-
-          const response = await axios.post(
-            webhookUrl,
-            {
-              message: message,
-            },
-            {
-              headers: {
-                'x-api-key': apiKey,
-                'Content-Type': 'application/json',
-              },
-              timeout: 60000, // 60 second timeout
-            },
-          );
-
-          const responseTime = Date.now() - startTime;
-          invokeSpinner.succeed('Response received');
-
-          // Display results
-          if (options.json) {
-            console.log(JSON.stringify(response.data, null, 2));
-          } else {
-            console.log('\n' + chalk.blue('🤖 Agent Response:'));
-            console.log(chalk.dim('─'.repeat(50)));
-
-            if (response.data.result) {
-              console.log(response.data.result);
-            } else if (response.data.response) {
-              console.log(response.data.response);
-            } else if (response.data.message) {
-              console.log(response.data.message);
-            } else if (typeof response.data === 'string') {
-              console.log(response.data);
-            } else {
-              // Fallback to pretty JSON if structure is unknown
-              console.log(JSON.stringify(response.data, null, 2));
-            }
-
-            console.log(chalk.dim('─'.repeat(50)));
-
-            // Display response time
-            console.log('');
-            console.log(chalk.dim(`Response time: ${responseTime}ms`));
-          }
-        } catch (webhookError: any) {
-          if (invokeSpinner) {
-            invokeSpinner.fail('Failed to invoke agent');
-          } else {
-            invokeSpinner.fail('Failed to get agent details');
-          }
-
-          // Check for 429 billing error first
-          const isStaging = process?.env?.IS_STG === 'true';
-          if (
-            BillingErrorHandler.handleIfBillingError(webhookError, isStaging)
-          ) {
             process.exit(1);
           }
+        }
 
-          if (webhookError.response?.status === 404) {
-            console.error(chalk.red('❌ Agent webhook not found'));
-            console.log(
-              chalk.yellow('Make sure the agent is properly configured'),
+        // API INVOCATION (DEFAULT)
+        if (useApi) {
+          console.log(chalk.cyan('🔌 Using API invocation'));
+
+          try {
+            const orgId = getOrganizationId(options.profile);
+            if (!orgId) {
+              console.error(
+                chalk.red(
+                  'No organization ID found. Please run `xpander configure` first.',
+                ),
+              );
+              process.exit(1);
+            }
+
+            const isStaging = process?.env?.IS_STG === 'true';
+            const baseUrl = isStaging
+              ? 'https://api.stg.xpander.ai'
+              : 'https://api.xpander.ai';
+            const apiUrl = `${baseUrl}/v1/agents/${agentId}/invoke`;
+
+            invokeSpinner = ora(`Invoking agent with: "${message}"...`).start();
+            const startTime = Date.now();
+
+            const response = await axios.post(
+              apiUrl,
+              {
+                input: {
+                  text: message,
+                },
+              },
+              {
+                headers: {
+                  'x-api-key': apiKey,
+                  'x-organization-id': orgId,
+                  'Content-Type': 'application/json',
+                },
+                timeout: 60000,
+              },
             );
-          } else if (webhookError.response?.status === 401) {
-            console.error(chalk.red('❌ Invalid API key'));
-            console.log(
-              chalk.yellow(
-                'Run `xpander configure` to update your credentials',
-              ),
-            );
-          } else if (webhookError.code === 'ECONNABORTED') {
-            console.error(
-              chalk.red('❌ Request timeout - agent took too long to respond'),
-            );
-          } else {
-            console.error(chalk.red('❌ Webhook invocation failed:'));
-            console.error(webhookError.response?.data || webhookError.message);
+
+            const responseTime = Date.now() - startTime;
+            invokeSpinner.succeed('Response received');
+
+            if (options.json) {
+              console.log(JSON.stringify(response.data, null, 2));
+            } else {
+              console.log('\n' + chalk.blue('🤖 Agent Response:'));
+              console.log(chalk.dim('─'.repeat(50)));
+
+              if (response.data.result) {
+                console.log(response.data.result);
+              } else if (response.data.response) {
+                console.log(response.data.response);
+              } else if (response.data.message) {
+                console.log(response.data.message);
+              } else if (typeof response.data === 'string') {
+                console.log(response.data);
+              } else {
+                console.log(JSON.stringify(response.data, null, 2));
+              }
+
+              console.log(chalk.dim('─'.repeat(50)));
+              console.log('');
+              console.log(chalk.dim(`Response time: ${responseTime}ms`));
+            }
+            return; // Exit after API invocation
+          } catch (apiError: any) {
+            if (invokeSpinner) {
+              invokeSpinner.fail('Failed to invoke agent');
+            }
+
+            const isStaging = process?.env?.IS_STG === 'true';
+            if (BillingErrorHandler.handleIfBillingError(apiError, isStaging)) {
+              process.exit(1);
+            }
+
+            if (apiError.response?.status === 404) {
+              console.error(chalk.red('❌ Agent not found'));
+              console.log(chalk.yellow('Make sure the agent ID is correct'));
+            } else if (apiError.response?.status === 401) {
+              console.error(chalk.red('❌ Invalid API key'));
+              console.log(
+                chalk.yellow(
+                  'Run `xpander configure` to update your credentials',
+                ),
+              );
+            } else if (apiError.code === 'ECONNABORTED') {
+              console.error(
+                chalk.red(
+                  '❌ Request timeout - agent took too long to respond',
+                ),
+              );
+            } else {
+              console.error(chalk.red('❌ API invocation failed:'));
+              console.error(apiError.response?.data || apiError.message);
+            }
+            process.exit(1);
           }
-          process.exit(1);
+        }
+
+        // WEBHOOK INVOCATION
+        if (useWebhook) {
+          console.log(chalk.cyan('🌐 Using webhook invocation'));
+
+          try {
+            const webhookUrl =
+              agentDetails.webhook_url ||
+              `https://webhook.xpander.ai/?agent_id=${agentId}&asynchronous=false`;
+
+            // Start spinner for webhook call
+            invokeSpinner = ora(`Invoking agent with: "${message}"...`).start();
+
+            // Start timing from webhook call
+            const startTime = Date.now();
+
+            const response = await axios.post(
+              webhookUrl,
+              {
+                message: message,
+              },
+              {
+                headers: {
+                  'x-api-key': apiKey,
+                  'Content-Type': 'application/json',
+                },
+                timeout: 60000, // 60 second timeout
+              },
+            );
+
+            const responseTime = Date.now() - startTime;
+            invokeSpinner.succeed('Response received');
+
+            // Display results
+            if (options.json) {
+              console.log(JSON.stringify(response.data, null, 2));
+            } else {
+              console.log('\n' + chalk.blue('🤖 Agent Response:'));
+              console.log(chalk.dim('─'.repeat(50)));
+
+              if (response.data.result) {
+                console.log(response.data.result);
+              } else if (response.data.response) {
+                console.log(response.data.response);
+              } else if (response.data.message) {
+                console.log(response.data.message);
+              } else if (typeof response.data === 'string') {
+                console.log(response.data);
+              } else {
+                // Fallback to pretty JSON if structure is unknown
+                console.log(JSON.stringify(response.data, null, 2));
+              }
+
+              console.log(chalk.dim('─'.repeat(50)));
+
+              // Display response time
+              console.log('');
+              console.log(chalk.dim(`Response time: ${responseTime}ms`));
+            }
+            return; // Exit after webhook invocation
+          } catch (webhookError: any) {
+            if (invokeSpinner) {
+              invokeSpinner.fail('Failed to invoke agent');
+            }
+
+            // Check for 429 billing error first
+            const isStaging = process?.env?.IS_STG === 'true';
+            if (
+              BillingErrorHandler.handleIfBillingError(webhookError, isStaging)
+            ) {
+              process.exit(1);
+            }
+
+            if (webhookError.response?.status === 404) {
+              console.error(chalk.red('❌ Agent webhook not found'));
+              console.log(
+                chalk.yellow('Make sure the agent is properly configured'),
+              );
+            } else if (webhookError.response?.status === 401) {
+              console.error(chalk.red('❌ Invalid API key'));
+              console.log(
+                chalk.yellow(
+                  'Run `xpander configure` to update your credentials',
+                ),
+              );
+            } else if (webhookError.code === 'ECONNABORTED') {
+              console.error(
+                chalk.red(
+                  '❌ Request timeout - agent took too long to respond',
+                ),
+              );
+            } else {
+              console.error(chalk.red('❌ Webhook invocation failed:'));
+              console.error(
+                webhookError.response?.data || webhookError.message,
+              );
+            }
+            process.exit(1);
+          }
         }
       } catch (error: any) {
         console.error(chalk.red('❌ Error invoking agent:'), error.message);

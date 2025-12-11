@@ -11,6 +11,7 @@ import { configureConfigureCommand } from './commands/configure';
 import { configureDeployCommand } from './commands/deploy';
 import { configureDevCommand } from './commands/dev';
 import { configureInitializeCommand } from './commands/initialize';
+import { configureInvokeCommand } from './commands/invoke';
 // import { configureInterfacesCommands } from './commands/interfaces/index';
 import {
   configureLoginCommand,
@@ -190,6 +191,7 @@ async function main(): Promise<void> {
   configureDevCommand(program);
   configureLogsCommand(program);
   configureSecretsSyncCommand(program);
+  configureInvokeCommand(program); // Top-level invoke alias
   agent(program);
   nemo(program);
 
