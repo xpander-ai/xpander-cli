@@ -325,7 +325,7 @@ Examples:
 
             const isStaging = process?.env?.IS_STG === 'true';
             const baseUrl = isStaging
-              ? 'https://api-stg.xpander.ai'
+              ? 'https://api.stg.xpander.ai'
               : 'https://api.xpander.ai';
             const apiUrl = `${baseUrl}/v1/agents/${agentId}/invoke`;
 
