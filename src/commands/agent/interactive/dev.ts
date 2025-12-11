@@ -35,13 +35,16 @@ async function findPythonExecutable(): Promise<string> {
 /**
  * Start agent locally and keep process running
  */
-export async function startAgent(providedAgentId?: string) {
+export async function startAgent(
+  providedAgentId?: string,
+  workingDirectory?: string,
+) {
   console.log('\n');
   console.log(chalk.bold.blue('✨ Starting agent in dev mode'));
   console.log(chalk.dim('─'.repeat(60)));
 
   const devModeSpinner = ora('Initializing local dev mode').start();
-  const currentDirectory = process.cwd();
+  const currentDirectory = workingDirectory || process.cwd();
 
   // If agent ID provided, we assume user wants to run in that directory
   // Otherwise ensure current directory is initialized

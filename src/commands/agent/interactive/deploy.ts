@@ -5,6 +5,7 @@ import ora from 'ora';
 import { XpanderClient } from '../../../utils/client';
 import {
   ensureAgentIsInitialized,
+  fileExists,
   pathIsEmpty,
 } from '../../../utils/custom-agents';
 import {
@@ -40,6 +41,33 @@ export async function deployAgent(
       return;
     }
 
+    // Check if .env file exists, if not create it with CLI credentials
+    const fs = await import('fs/promises');
+    const path = await import('path');
+    const envPath = path.join(currentDirectory, '.env');
+    const envExists = await fileExists(envPath);
+
+    if (!envExists) {
+      deploymentSpinner.info(
+        '.env file not found, creating it with CLI credentials',
+      );
+
+      // Get credentials from client (which uses profile or default)
+      const credentials = {
+        api_key: client.apiKey,
+        organization_id: client.orgId,
+      };
+
+      // Create .env file with CLI credentials
+      const envContent = `XPANDER_API_KEY=${credentials.api_key}
+XPANDER_ORGANIZATION_ID=${credentials.organization_id}
+XPANDER_AGENT_ID=
+`;
+      await fs.writeFile(envPath, envContent);
+      deploymentSpinner.info('Created .env file with CLI credentials');
+      deploymentSpinner.start();
+    }
+
     // check for configuration and required files
     const isInitialized = await ensureAgentIsInitialized(
       currentDirectory,
@@ -64,9 +92,6 @@ export async function deployAgent(
           'No agent ID found in .env file, will prompt for selection',
         );
         // Try to read just the credentials
-        const fs = await import('fs/promises');
-        const path = await import('path');
-        const envPath = path.join(currentDirectory, '.env');
         const envContent = await fs.readFile(envPath, 'utf-8');
         const envVars = Object.fromEntries(
           envContent
@@ -121,18 +146,29 @@ export async function deployAgent(
       // Use agent ID from .env file
       agentId = config.agent_id;
     } else {
-      // No agent ID provided, prompt user to select or create one
-      const { getAgentIdFromEnvOrSelection } = await import(
-        '../../../utils/agent-resolver'
-      );
-      const selectedAgentId = await getAgentIdFromEnvOrSelection(
-        deployClient,
-        undefined,
-      );
-      if (!selectedAgentId) {
-        return;
+      // No agent ID provided
+      // In non-interactive mode, we'll use the directory name and let the agent creation logic handle it
+      // In interactive mode, prompt user to select
+      if (isNonInteractive) {
+        // Use directory name as agent name/id - will be created if doesn't exist
+        agentId = path.basename(currentDirectory);
+        deploymentSpinner.info(
+          `No agent ID found, will create/use agent: ${agentId}`,
+        );
+      } else {
+        // Prompt user to select or create one
+        const { getAgentIdFromEnvOrSelection } = await import(
+          '../../../utils/agent-resolver'
+        );
+        const selectedAgentId = await getAgentIdFromEnvOrSelection(
+          deployClient,
+          undefined,
+        );
+        if (!selectedAgentId) {
+          return;
+        }
+        agentId = selectedAgentId;
       }
-      agentId = selectedAgentId;
     }
 
     if (!skipDeploymentConfirmation && !isNonInteractive) {
@@ -186,12 +222,36 @@ export async function deployAgent(
       deploymentSpinner.start('Creating new agent...');
 
       try {
+        // Use the directory name as the agent name
+        const agentName = path.basename(currentDirectory);
+
         // Create agent with basic configuration
         agent = await deployClient.createAgent(
-          agentId!, // Use agent ID as name
+          agentName, // Use directory name as agent name
           'container', // Default to container deployment
         );
         deploymentSpinner.succeed(`Agent ${agent.name} created successfully`);
+
+        // Update agentId to use the newly created agent's ID
+        agentId = agent.id;
+
+        // Update .env file with the new agent ID
+        if (agent) {
+          const envContent = await fs.readFile(envPath, 'utf-8');
+          const updatedEnvContent = envContent
+            .split('\n')
+            .map((line) => {
+              if (line.trim().startsWith('XPANDER_AGENT_ID=')) {
+                return `XPANDER_AGENT_ID=${agent!.id}`;
+              }
+              return line;
+            })
+            .join('\n');
+          await fs.writeFile(envPath, updatedEnvContent);
+          deploymentSpinner.info(
+            `Updated .env file with new agent ID: ${agent.id}`,
+          );
+        }
       } catch (createError: any) {
         deploymentSpinner.fail(
           `Failed to create agent: ${createError.message}`,

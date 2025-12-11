@@ -70,9 +70,14 @@ export function agent(program: Command): void {
     )
     .option('--confirm', 'Skip confirmation prompts')
     .option('--skip-local-tests', 'Skip local Docker container tests')
-    .action(async (agentId, options) => {
+    .action(async (agentId, options, command) => {
       const { createClient } = await import('../../utils/client');
       const { deployAgent } = await import('./interactive/deploy');
+
+      // Check if --profile was explicitly provided in command line
+      const profileExplicitlySet =
+        command.parent?.rawArgs.includes('--profile');
+
       const client = createClient(options.profile);
       await deployAgent(
         client,
@@ -80,7 +85,7 @@ export function agent(program: Command): void {
         options.confirm,
         options.skipLocalTests,
         options.path,
-        !!options.profile, // Use profile credentials if --profile was explicitly set
+        profileExplicitlySet || false, // Use profile credentials if --profile was explicitly set
       );
     });
 
@@ -88,31 +93,43 @@ export function agent(program: Command): void {
     .command('dev [agent]')
     .description('Run agent locally')
     .option('--profile <n>', 'Profile to use')
-    .action(async (agentId) => {
+    .option(
+      '--path <path>',
+      'Path to agent directory (defaults to current directory)',
+    )
+    .action(async (agentId, options) => {
       const { startAgent } = await import('./interactive/dev');
-      await startAgent(agentId);
+      await startAgent(agentId, options.path);
     });
 
   agentCmd
     .command('restart [agent]')
     .description('Restart agent')
     .option('--profile <n>', 'Profile to use')
+    .option(
+      '--path <path>',
+      'Path to agent directory (defaults to current directory)',
+    )
     .action(async (agentId, options) => {
       const { restartAgent } = await import('../restart');
       const { createClient } = await import('../../utils/client');
       const client = createClient(options.profile);
-      await restartAgent(client, agentId);
+      await restartAgent(client, agentId, options.path);
     });
 
   agentCmd
     .command('stop [agent]')
     .description('Stop agent')
     .option('--profile <n>', 'Profile to use')
+    .option(
+      '--path <path>',
+      'Path to agent directory (defaults to current directory)',
+    )
     .action(async (agentId, options) => {
       const { stopAgent } = await import('../stop');
       const { createClient } = await import('../../utils/client');
       const client = createClient(options.profile);
-      await stopAgent(client, agentId);
+      await stopAgent(client, agentId, options.path);
     });
 
   // Register graph and tools commands

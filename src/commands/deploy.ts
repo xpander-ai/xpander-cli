@@ -18,7 +18,11 @@ export function configureDeployCommand(program: Command): Command {
     )
     .option('--confirm', 'Skip confirmation prompts')
     .option('--skip-local-tests', 'Skip local Docker container tests')
-    .action(async (agentId, options) => {
+    .action(async (agentId, options, command) => {
+      // Check if --profile was explicitly provided in command line
+      const profileExplicitlySet =
+        command.parent?.rawArgs.includes('--profile');
+
       const client = createClient(options.profile);
 
       await deployAgent(
@@ -27,7 +31,7 @@ export function configureDeployCommand(program: Command): Command {
         options.confirm,
         options.skipLocalTests,
         options.path,
-        !!options.profile, // Use profile credentials if --profile was explicitly set
+        profileExplicitlySet || false, // Use profile credentials if --profile was explicitly set
       );
     });
 
