@@ -132,37 +132,19 @@ export async function getAgentIdFromEnvOrSelection(
   providedAgentId?: string,
   silent: boolean = false,
 ): Promise<string | null> {
-  // Try to get agent ID from .env file first
-  let envAgentId: string | undefined;
+  // If agent ID is provided, resolve it (could be name or ID)
+  if (providedAgentId) {
+    return resolveAgentId(client, providedAgentId, silent);
+  }
+
+  // Try to get agent ID from .env file
   try {
     const config = await getXpanderConfigFromEnvFile(process.cwd());
     if (config?.agent_id) {
-      envAgentId = config.agent_id;
+      return config.agent_id;
     }
   } catch (error) {
     // No .env file or no agent_id in it
-  }
-
-  // If agent ID is provided, try to resolve it
-  if (providedAgentId) {
-    const resolvedId = await resolveAgentId(client, providedAgentId, silent);
-    // If resolution failed and we have an env agent_id, fall back to it
-    if (!resolvedId && envAgentId) {
-      if (!silent) {
-        console.log(
-          chalk.yellow(
-            '⚠ Provided agent not found, using agent from .env file',
-          ),
-        );
-      }
-      return envAgentId;
-    }
-    return resolvedId;
-  }
-
-  // No providedAgentId - use env agent_id if available
-  if (envAgentId) {
-    return envAgentId;
   }
 
   // Show interactive selection
