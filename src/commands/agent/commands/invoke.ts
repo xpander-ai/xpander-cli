@@ -314,7 +314,20 @@ Examples:
 
           try {
             const orgId = getOrganizationId(options.profile);
-            const apiUrl = `https://api.xpander.ai/v1/agents/${agentId}/invoke`;
+            if (!orgId) {
+              console.error(
+                chalk.red(
+                  'No organization ID found. Please run `xpander configure` first.',
+                ),
+              );
+              process.exit(1);
+            }
+
+            const isStaging = process?.env?.IS_STG === 'true';
+            const baseUrl = isStaging
+              ? 'https://api-stg.xpander.ai'
+              : 'https://api.xpander.ai';
+            const apiUrl = `${baseUrl}/v1/agents/${agentId}/invoke`;
 
             invokeSpinner = ora(`Invoking agent with: "${message}"...`).start();
             const startTime = Date.now();
