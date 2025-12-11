@@ -163,6 +163,8 @@ XPANDER_AGENT_ID=
         const selectedAgentId = await getAgentIdFromEnvOrSelection(
           deployClient,
           undefined,
+          false,
+          currentDirectory,
         );
         if (!selectedAgentId) {
           return;
