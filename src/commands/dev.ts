@@ -10,8 +10,12 @@ export function configureDevCommand(program: Command): Command {
     .command(`${CommandType.Dev} [agent]`)
     .description('Run agent locally')
     .option('--profile <n>', 'Profile to use')
-    .action(async (agentId, _options) => {
-      await startAgent(agentId);
+    .option(
+      '--path <path>',
+      'Path to agent directory (defaults to current directory)',
+    )
+    .action(async (agentId, options) => {
+      await startAgent(agentId, options.path);
     });
 
   return operationsCmd;

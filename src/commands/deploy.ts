@@ -1,6 +1,5 @@
 import { Command } from 'commander';
 import { CommandType } from '../types';
-import { getAgentIdFromEnvOrSelection } from '../utils/agent-resolver';
 import { createClient } from '../utils/client';
 import { deployAgent } from './agent/interactive/deploy';
 
@@ -13,24 +12,26 @@ export function configureDeployCommand(program: Command): Command {
     .alias('d')
     .description('Deploy agent')
     .option('--profile <n>', 'Profile to use')
+    .option(
+      '--path <path>',
+      'Path to agent directory (defaults to current directory)',
+    )
     .option('--confirm', 'Skip confirmation prompts')
     .option('--skip-local-tests', 'Skip local Docker container tests')
-    .action(async (agentId, options) => {
-      const client = createClient(options.profile);
+    .action(async (agentId, options, command) => {
+      // Check if --profile was explicitly provided in command line
+      const profileExplicitlySet =
+        command.parent?.rawArgs.includes('--profile');
 
-      const resolvedAgentId = await getAgentIdFromEnvOrSelection(
-        client,
-        agentId,
-      );
-      if (!resolvedAgentId) {
-        return;
-      }
+      const client = createClient(options.profile);
 
       await deployAgent(
         client,
-        resolvedAgentId,
+        agentId,
         options.confirm,
         options.skipLocalTests,
+        options.path,
+        profileExplicitlySet || false, // Use profile credentials if --profile was explicitly set
       );
     });
 

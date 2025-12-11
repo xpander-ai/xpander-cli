@@ -9,6 +9,7 @@ import { restartDeployment } from '../utils/custom_agents_utils/deploymentManage
 export async function restartAgent(
   client: XpanderClient,
   providedAgentId?: string,
+  workingDirectory?: string,
 ) {
   console.log('\n');
   console.log(chalk.bold.blue('🔄 Agent restart'));
@@ -18,7 +19,18 @@ export async function restartAgent(
 
   const restartSpinner = ora(`Initializing restart...`).start();
   try {
+    // Change to working directory if provided
+    const originalCwd = process.cwd();
+    if (workingDirectory) {
+      process.chdir(workingDirectory);
+    }
+
     const agentId = await getAgentIdFromEnvOrSelection(client, providedAgentId);
+
+    // Restore original working directory
+    if (workingDirectory) {
+      process.chdir(originalCwd);
+    }
     if (!agentId) {
       restartSpinner.fail('No agent selected.');
       return;
@@ -108,9 +120,13 @@ export function configureRestartCommand(program: Command): Command {
     .command('restart [agent]')
     .description('Restart agent deployment')
     .option('--profile <n>', 'Profile to use')
+    .option(
+      '--path <path>',
+      'Path to agent directory (defaults to current directory)',
+    )
     .action(async (agentId, options) => {
       const client = createClient(options.profile);
-      await restartAgent(client, agentId);
+      await restartAgent(client, agentId, options.path);
     });
 
   return restartCmd;

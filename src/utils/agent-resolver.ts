@@ -131,6 +131,7 @@ export async function getAgentIdFromEnvOrSelection(
   client: XpanderClient,
   providedAgentId?: string,
   silent: boolean = false,
+  workingDirectory?: string,
 ): Promise<string | null> {
   // If agent ID is provided, resolve it (could be name or ID)
   if (providedAgentId) {
@@ -139,7 +140,9 @@ export async function getAgentIdFromEnvOrSelection(
 
   // Try to get agent ID from .env file
   try {
-    const config = await getXpanderConfigFromEnvFile(process.cwd());
+    const config = await getXpanderConfigFromEnvFile(
+      workingDirectory || process.cwd(),
+    );
     if (config?.agent_id) {
       return config.agent_id;
     }
