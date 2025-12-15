@@ -1,18 +1,15 @@
-import { exec } from 'child_process';
 import * as fssync from 'fs';
 import fs from 'fs/promises';
 import * as os from 'os';
 import path from 'path';
-import { promisify } from 'util';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import ora from 'ora';
 import { XpanderClient } from './client';
 import { fileExists, pathIsEmpty } from './custom-agents';
+import { cloneWithFallback } from './git-clone';
 import { createNeMoConfigFile } from './nemo';
 import { AGENT_TEMPLATES, AgentTemplate } from '../types/templates';
-
-const execAsync = promisify(exec);
 
 export async function cloneTemplate(
   template: AgentTemplate,
@@ -30,9 +27,7 @@ export async function cloneTemplate(
   let overwriteDockerignore = false;
 
   try {
-    await execAsync(
-      `git clone --depth 1 ${template.repositoryUrl} ${tmpFolder}`,
-    );
+    await cloneWithFallback(template.repositoryUrl, tmpFolder, '--depth 1');
     const srcPath = template.folderName
       ? path.join(tmpFolder, template.folderName)
       : tmpFolder;
