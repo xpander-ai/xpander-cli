@@ -115,21 +115,33 @@ export function registerDeleteCommand(agentCmd: Command): void {
         console.log(chalk.red('⚠️ This action cannot be undone!'));
         console.log(chalk.dim('─'.repeat(50)));
 
-        // Confirm deletion
-        const confirmation = await inquirer.prompt([
-          {
-            type: 'confirm',
-            name: 'confirmed',
-            message: `Are you sure you want to permanently delete this agent?`,
-            default: false,
-          },
-        ]);
+        // Check if confirmation should be skipped
+        const isNonInteractive = process.env.XPANDER_NON_INTERACTIVE === 'true';
+        const skipConfirmation = updatedOptions.confirm || isNonInteractive;
 
-        if (!confirmation.confirmed) {
+        // Confirm deletion
+        if (!skipConfirmation) {
+          const confirmation = await inquirer.prompt([
+            {
+              type: 'confirm',
+              name: 'confirmed',
+              message: `Are you sure you want to permanently delete this agent?`,
+              default: false,
+            },
+          ]);
+
+          if (!confirmation.confirmed) {
+            console.log(
+              chalk.blue('\n✓ Operation cancelled. Agent was not deleted.'),
+            );
+            return;
+          }
+        } else {
           console.log(
-            chalk.blue('\n✓ Operation cancelled. Agent was not deleted.'),
+            chalk.yellow(
+              '→ Skipping confirmation (non-interactive mode or --confirm flag set)',
+            ),
           );
-          return;
         }
 
         // Create a spinner for deletion
