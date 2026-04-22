@@ -112,9 +112,11 @@ function isNewerVersion(
   const latest = latestVersion.replace(/^v/, '');
   const current = currentVersion.replace(/^v/, '');
 
-  // Special case: if current version is 0.0.0 (development), always show update if a published version exists
-  if (current === '0.0.0' && latest !== '0.0.0') {
-    return true;
+  // Local dev build (0.0.0) — suppress the update notice; the local binary
+  // is intentionally newer-than-published and we don't want the banner in
+  // customer-facing demos.
+  if (current === '0.0.0') {
+    return false;
   }
 
   const latestParts = latest.split('.').map((part) => parseInt(part, 10));

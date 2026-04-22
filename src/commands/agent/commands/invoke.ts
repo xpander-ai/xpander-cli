@@ -1,4 +1,6 @@
 import { spawn } from 'child_process';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 import axios from 'axios';
 import chalk from 'chalk';
 import { Command } from 'commander';
@@ -13,6 +15,8 @@ import {
   canUseLocalHandler,
   getPythonCommand,
 } from '../../../utils/local-handler';
+import { invokeManifestAgent } from '../../../utils/manifest/invoker';
+import { loadManifest } from '../../../utils/manifest/parser';
 
 /**
  * Register invoke command for agents
@@ -47,8 +51,38 @@ Examples:
     .option('--local', 'Use local handler (xpander_handler.py)')
     .option('--api', 'Use API invocation (default)')
     .option('--webhook', 'Use webhook invocation')
+    .option(
+      '-f, --file <file>',
+      'Declarative manifest (forces xpander.yaml AgentCore /invocations path)',
+    )
+    .option('--endpoint <url>', 'Override AgentCore endpoint (default: http://localhost:8080)')
+    .option('--session <id>', 'AgentCore session ID header')
     .action(async (agentArg, messageArgs, options) => {
       try {
+        // Declarative mode: if `-f` is given or xpander.yaml sits in cwd,
+        // hit the AgentCore HTTP contract described by the manifest and
+        // skip the platform-API path entirely.
+        const manifestPath = await detectManifest(options.file);
+        if (manifestPath) {
+          const manifest = await loadManifest(manifestPath);
+          const prompt = joinMessage(agentArg, messageArgs, options.message);
+          if (!prompt) {
+            console.error(
+              chalk.red('Missing prompt.'),
+              chalk.dim(
+                '\n  Usage:  xpander invoke "your prompt"  (runs against xpander.yaml in cwd)',
+              ),
+            );
+            process.exit(1);
+          }
+          await invokeManifestAgent(manifest, prompt, {
+            endpoint: options.endpoint,
+            sessionId: options.session,
+            json: !!options.json,
+          });
+          return;
+        }
+
         const apiKey = getApiKey(options.profile);
         if (!apiKey) {
           console.error(
@@ -513,4 +547,49 @@ Examples:
         process.exit(1);
       }
     });
+}
+
+/**
+ * Return an absolute path to a manifest file when declarative mode should
+ * fire, or null when the caller should use the platform-API path.
+ *
+ * Fires when:
+ *   - `-f` is explicitly passed (honor the user)
+ *   - OR xpander.yaml exists in cwd AND agent.py lives alongside it
+ *     (heuristic: user is standing in a declarative-demo directory)
+ */
+async function detectManifest(fileArg?: string): Promise<string | null> {
+  if (fileArg) {
+    const abs = path.resolve(fileArg);
+    try {
+      const stat = await fs.stat(abs);
+      if (stat.isFile()) return abs;
+    } catch {
+      /* fall through */
+    }
+    return null;
+  }
+  const cwd = process.cwd();
+  const manifest = path.join(cwd, 'xpander.yaml');
+  const entrypoint = path.join(cwd, 'agent.py');
+  try {
+    const [m, e] = await Promise.all([fs.stat(manifest), fs.stat(entrypoint)]);
+    if (m.isFile() && e.isFile()) return manifest;
+  } catch {
+    /* not a declarative dir */
+  }
+  return null;
+}
+
+function joinMessage(
+  agentArg: string | undefined,
+  messageArgs: string[] | string | undefined,
+  messageOpt: string | undefined,
+): string {
+  if (messageOpt) return messageOpt.trim();
+  const parts: string[] = [];
+  if (agentArg) parts.push(agentArg);
+  if (Array.isArray(messageArgs)) parts.push(...messageArgs);
+  else if (messageArgs) parts.push(messageArgs);
+  return parts.join(' ').trim();
 }
