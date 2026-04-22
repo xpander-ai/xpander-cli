@@ -220,14 +220,17 @@ describe('Version Check Utility', () => {
       expect(mockConsoleLog).toHaveBeenCalled();
     });
 
-    test('should show update for development version (0.0.0)', async () => {
+    test('should suppress update notice for local dev build (0.0.0)', async () => {
+      // Local dev builds intentionally live ahead of the published version.
+      // Showing the "update available" banner in a customer-facing demo
+      // looks unprofessional — dev builds must stay quiet.
       mockedAxios.get.mockResolvedValue({
         data: { 'dist-tags': { latest: '1.0.0' } },
       });
 
       await checkForUpdates('0.0.0');
 
-      expect(mockConsoleLog).toHaveBeenCalled();
+      expect(mockConsoleLog).not.toHaveBeenCalled();
     });
 
     test('should handle different length version numbers', async () => {
