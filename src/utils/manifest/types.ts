@@ -1,17 +1,3 @@
-export type RfpStatus = 'supported' | 'partial' | 'roadmap' | 'guidance';
-
-export interface RfpRequirement {
-  id: string;
-  name: string;
-  status: RfpStatus;
-}
-
-export interface RfpBucket {
-  code: string;
-  name: string;
-  requirements: RfpRequirement[];
-}
-
 export interface ManifestDoc {
   apiVersion?: string;
   kind?: string;
@@ -50,21 +36,4 @@ export interface ParsedManifest {
   path: string;
   raw: string;
   doc: ManifestDoc;
-  coveredIds: string[];
-  declaredUncoveredBuckets: string[];
-}
-
-export interface BucketCoverage {
-  bucket: RfpBucket;
-  covered: RfpRequirement[];
-  uncovered: RfpRequirement[];
-  percent: number;
-  declaredUncovered: boolean;
-}
-
-export interface CoverageReport {
-  buckets: BucketCoverage[];
-  totalRequirements: number;
-  totalCovered: number;
-  overallPercent: number;
 }

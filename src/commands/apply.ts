@@ -6,14 +6,8 @@ import inquirer from 'inquirer';
 import { CommandType } from '../types';
 import { createClient } from '../utils/client';
 import { applyManifest } from '../utils/manifest/applier';
-import { buildCoverageReport } from '../utils/manifest/coverage';
 import { loadManifest } from '../utils/manifest/parser';
-import {
-  renderCoverage,
-  renderCoveredDetail,
-  renderManifestHeader,
-  renderPlan,
-} from '../utils/manifest/renderer';
+import { renderManifestHeader, renderPlan } from '../utils/manifest/renderer';
 
 const DEFAULT_FILE = 'xpander.yaml';
 
@@ -21,31 +15,27 @@ export function configureApplyCommand(program: Command): Command {
   const cmd = program
     .command(`${CommandType.Apply} [file]`)
     .description(
-      'Apply a declarative xpander.yaml manifest (kubectl-style). Shows RFP matrix coverage before reconciling.',
+      'Apply a declarative xpander.yaml manifest (kubectl-style). Renders a plan and reconciles the agent.',
     )
     .option(
       '-f, --file <file>',
       'Manifest file (defaults to xpander.yaml in cwd)',
     )
-    .option('--dry-run', 'Render plan + coverage only; do not reconcile')
+    .option('--dry-run', 'Render plan only; do not reconcile')
     .option(
       '--live',
       'Call the xpander API to create/update the agent (default is simulation)',
     )
     .option('--yes', 'Skip confirmation prompt')
-    .option('--no-detail', 'Skip the covered-requirements table')
     .option('--profile <n>', 'Profile to use')
-    .action(async (fileArg: string | undefined, options, command) => {
+    .action(async (fileArg: string | undefined, options) => {
       const filePath = await resolveManifestPath(options.file || fileArg);
       if (!filePath) return;
 
       const manifest = await loadManifest(filePath);
-      const report = buildCoverageReport(manifest);
 
       renderManifestHeader(manifest);
       renderPlan(manifest);
-      renderCoverage(report);
-      if (options.detail !== false) renderCoveredDetail(report);
 
       if (options.dryRun) {
         console.log('');
@@ -61,7 +51,7 @@ export function configureApplyCommand(program: Command): Command {
             name: 'confirm',
             message: options.live
               ? 'Apply manifest (live — will call xpander API)?'
-              : 'Apply manifest (simulation)?',
+              : 'Apply manifest?',
             default: true,
           },
         ]);
@@ -71,14 +61,9 @@ export function configureApplyCommand(program: Command): Command {
         }
       }
 
-      const profileExplicit = command.parent?.rawArgs.includes('--profile');
-      const client = options.live
-        ? createClient(
-            options.profile ?? (profileExplicit ? undefined : undefined),
-          )
-        : undefined;
+      const client = options.live ? createClient(options.profile) : undefined;
 
-      await applyManifest(manifest, report, { live: !!options.live, client });
+      await applyManifest(manifest, { live: !!options.live, client });
     });
 
   return cmd;

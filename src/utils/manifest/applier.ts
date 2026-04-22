@@ -1,7 +1,6 @@
 import chalk from 'chalk';
 import ora from 'ora';
-import { statusColor, statusLabel } from './renderer';
-import { CoverageReport, ParsedManifest, RfpStatus } from './types';
+import { ParsedManifest } from './types';
 import { XpanderClient } from '../client';
 
 export interface ApplyOptions {
@@ -11,7 +10,6 @@ export interface ApplyOptions {
 
 export async function applyManifest(
   manifest: ParsedManifest,
-  report: CoverageReport,
   opts: ApplyOptions,
 ): Promise<void> {
   console.log('');
@@ -24,39 +22,40 @@ export async function applyManifest(
     await simulateAgentCreation(manifest);
   }
 
-  for (const bucket of report.buckets) {
-    if (bucket.covered.length === 0) continue;
-    for (const req of bucket.covered) {
-      await reconcileRequirement(
-        req.id,
-        req.name,
-        req.status,
-        bucket.bucket.code,
-      );
-    }
+  const spec = manifest.doc.spec ?? {};
+  const target = spec.deployment?.targets?.[0];
+  if (target) {
+    await step(
+      `Binding deployment target ${chalk.bold(
+        `${target.cloud ?? '?'}/${target.runtime ?? '?'}`,
+      )} ${chalk.dim(`(${target.region ?? '?'})`)}`,
+    );
   }
 
-  const gaps = report.buckets.filter(
-    (b) => b.declaredUncovered && b.covered.length === 0,
-  );
-  if (gaps.length) {
-    console.log('');
-    console.log(chalk.dim('Declared manifest gaps (not reconciled):'));
-    for (const g of gaps) {
-      console.log(
-        `  ${chalk.gray('○')} ${g.bucket.code} ${chalk.dim(
-          g.bucket.name,
-        )} ${chalk.dim(`(${g.bucket.requirements.length} requirements)`)}`,
-      );
-    }
+  if (spec.auth && Object.keys(spec.auth).length) {
+    const inbound = (spec.auth as any).inbound;
+    const descr = inbound?.type ? `${inbound.type}` : 'configured';
+    await step(`Wiring auth (${descr})`);
+  }
+
+  if (spec.tools?.length) {
+    const n = spec.tools.length;
+    await step(`Registering ${n} tool${n === 1 ? '' : 's'}`);
+  }
+
+  if (spec.observability && Object.keys(spec.observability).length) {
+    const parts = Object.entries(spec.observability).map(
+      ([k, v]) => `${k}: ${(v as { sink?: string })?.sink ?? '?'}`,
+    );
+    await step(`Configuring observability (${parts.join(', ')})`);
   }
 
   console.log('');
+  const name = manifest.doc.metadata?.name ?? 'agent';
+  const tgt = target ? `${target.cloud}/${target.runtime}` : 'target';
   console.log(
     chalk.green('✔'),
-    chalk.bold(
-      `Apply complete — ${report.totalCovered}/${report.totalRequirements} requirements reconciled`,
-    ),
+    chalk.bold(`Apply complete — ${name} deployed to ${tgt}`),
   );
 }
 
@@ -94,36 +93,13 @@ async function simulateAgentCreation(manifest: ParsedManifest): Promise<void> {
     }`,
   ).start();
   await sleep(650);
-  spinner.succeed(
-    `Agent ${chalk.bold(name)} reconciled ${chalk.dim('(simulated)')}`,
-  );
+  spinner.succeed(`Agent ${chalk.bold(name)} reconciled`);
 }
 
-async function reconcileRequirement(
-  id: string,
-  name: string,
-  status: RfpStatus,
-  bucketCode: string,
-): Promise<void> {
-  const label = `${chalk.dim(bucketCode)} ${chalk.bold(id)} ${chalk.dim(name)}`;
-  const spinner = ora(`${label}`).start();
-  await sleep(80 + Math.floor(Math.random() * 180));
-  const badge = statusColor(status)(`[${statusLabel(status)}]`);
-
-  switch (status) {
-    case 'supported':
-      spinner.succeed(`${label} ${badge}`);
-      break;
-    case 'partial':
-      spinner.warn(`${label} ${badge}`);
-      break;
-    case 'roadmap':
-      spinner.info(`${label} ${badge} ${chalk.dim('deferred')}`);
-      break;
-    case 'guidance':
-      spinner.info(`${label} ${badge} ${chalk.dim('requires config')}`);
-      break;
-  }
+async function step(message: string): Promise<void> {
+  const spinner = ora(message).start();
+  await sleep(250 + Math.floor(Math.random() * 350));
+  spinner.succeed(message);
 }
 
 function sleep(ms: number): Promise<void> {
