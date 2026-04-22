@@ -7,6 +7,7 @@ import inquirer from 'inquirer';
 
 import { version } from '../package.json';
 import { agent } from './commands/agent';
+import { configureApplyCommand } from './commands/apply';
 import { configureConfigureCommand } from './commands/configure';
 import { configureDeployCommand } from './commands/deploy';
 import { configureDevCommand } from './commands/dev';
@@ -185,6 +186,7 @@ async function main(): Promise<void> {
   // configureInterfacesCommands(program);  // Hidden - needs refactoring
   // configureOperationsCommand(program);   // Hidden - needs refactoring
   configureDeployCommand(program);
+  configureApplyCommand(program);
   configureRestartCommand(program);
   configureStopCommand(program);
   configureInitializeCommand(program);

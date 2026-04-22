@@ -14,6 +14,7 @@ export enum CommandType {
   Dev = 'dev',
   SecretsSync = 'secrets-sync',
   Deploy = 'deploy',
+  Apply = 'apply',
   Restart = 'restart',
   Stop = 'stop',
   Logs = 'logs',
